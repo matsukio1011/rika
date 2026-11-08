@@ -1,0 +1,1575 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10131b">
+  <title>仕事のシミュレーター｜直接・定滑車・動滑車・斜面・てこ・輪軸</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Yu Gothic UI", Meiryo, system-ui, sans-serif;
+      color: #f3f5fa;
+      background: #10131b;
+      --line: #30394a;
+      --muted: #aeb9ce;
+      --mint: #69e5bc;
+      --blue: #a4bbff;
+      --amber: #ffcf82;
+      font-variant-numeric: tabular-nums;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .app {
+      height: 100dvh;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: clamp(8px, 1.6vh, 16px);
+      padding: clamp(8px, 1.5vh, 16px) clamp(10px, 1.7vw, 28px);
+    }
+    header, .toolbar, .label-row, .ends, .dialog-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header { gap: 10px; flex-wrap: wrap; }
+    h1, h2, p, dl, dd { margin: 0; }
+    h1 { font-size: clamp(18px, 2.9vh, 30px); line-height: 1.2; }
+    .toolbar { gap: 6px; flex-wrap: wrap; justify-content: flex-start; }
+    button {
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #222939;
+      color: inherit;
+      padding: 5px 9px;
+      min-height: 31px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    button:hover { background: #2d374a; }
+    button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+    #fullscreen { display: flex; align-items: center; gap: 5px; }
+    .scene { min-height: 0; display: grid; grid-template-rows: repeat(var(--row-count, 1), minmax(0, 1fr)); gap: clamp(8px, 1.6vh, 16px); }
+    .experiment-row { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: clamp(4px, 1vh, 10px); }
+    .scene[data-rows="2"] .experiment-row { gap: 4px; }
+    .columns { display: grid; grid-template-columns: var(--method-columns, repeat(3, minmax(0, 1fr))); padding-right: var(--ruler-gutter, 7.3%); text-align: center; }
+    [hidden] { display: none !important; }
+    .methods h2 { font-size: clamp(13px, 1.4vw, 21px); }
+    .index { color: var(--mint); font-size: .85em; margin-right: .3em; }
+    .methods p { margin-top: 2px; color: var(--muted); font-size: clamp(11px, 1vw, 14px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .methods p span { color: var(--mint); font-weight: 700; }
+    .experiment-conditions { min-height: 23px; padding: 1px 6px; margin-left: 6px; vertical-align: middle; }
+    .methods p .experiment-goal { color: var(--muted); font-weight: 400; }
+    .methods .experiment-mass { display: none; }
+    .scene[data-rows="2"] .methods h2 { font-size: clamp(12px, 1.2vw, 17px); }
+    .scene[data-rows="2"] .methods .experiment-mass { display: inline; color: var(--muted); font-weight: 400; }
+    .experiment-diagram {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      cursor: ns-resize;
+      background: #131925;
+      border-radius: 12px;
+    }
+    .experiment-diagram text { font-family: inherit; }
+    .force-target { cursor: pointer; }
+    .force-target:hover rect, .force-target:focus-visible rect { stroke: var(--mint); stroke-width: 3; }
+    .slope-angle-button { cursor: pointer; color: var(--mint); }
+    .slope-angle-button rect { fill: #183733; stroke: currentColor; }
+    .slope-angle-button:hover rect, .slope-angle-button:focus-visible rect { fill: #254943; stroke-width: 2.5; }
+    .slope-angle-button text { fill: currentColor; font-size: 16px; font-weight: 800; }
+    .lever-pivot-button { cursor: pointer; color: var(--mint); }
+    .lever-pivot-button text { fill: currentColor; font-size: 15px; font-weight: 800; }
+    .lever-pivot-button:hover path, .lever-pivot-button:focus-visible path { fill: #69e5bc19; }
+    .lever-pivot-button:hover circle, .lever-pivot-button:focus-visible circle { stroke: currentColor; stroke-width: 3; }
+    .moving-wheel-bank { cursor: pointer; }
+    .moving-wheel-bank:hover .moving-sheave, .moving-wheel-bank:focus-visible .moving-sheave { stroke: var(--mint); stroke-width: 3; }
+    .wheel-axle-button { cursor: pointer; color: var(--mint); }
+    .wheel-axle-button .ratio-badge { fill: #183733; stroke: currentColor; }
+    .wheel-axle-button:hover .ratio-badge, .wheel-axle-button:focus-visible .ratio-badge { fill: #254943; stroke-width: 2.5; }
+    .wheel-axle-button text { fill: currentColor; font-size: 15px; font-weight: 800; }
+    .wheel-axle-face { --face-fill: #202c42; --face-rim: #99b4f0; --face-spokes: #7188b4; }
+    .wheel-axle-face.axle-face { --face-fill: #34575a; --face-rim: #8cd8c1; --face-spokes: #8cd8c1; }
+    .wheel-axle-face .face { fill: var(--face-fill); stroke: var(--face-rim); }
+    .wheel-axle-face .spokes { stroke: var(--face-spokes); }
+    .target-height-tick { cursor: pointer; color: var(--muted); }
+    .target-height-tick rect { fill: #202a3a; stroke: #3b4960; }
+    .target-height-tick text { fill: currentColor; font-size: 17px; font-weight: 700; }
+    .target-height-tick:hover rect, .target-height-tick:focus-visible rect { stroke: var(--blue); stroke-width: 2; }
+    .target-height-tick[aria-pressed="true"] { color: #eff3ff; }
+    .target-height-tick[aria-pressed="true"] rect { fill: #34477b; stroke: var(--blue); }
+    .readings dl {
+      container: readout / inline-size;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 2px 3px;
+      min-width: 0;
+      margin-inline: clamp(2px, .45vw, 8px);
+      padding: 3px 4px;
+      border: 1px solid #293447;
+      border-radius: 8px;
+      background: #141a24;
+    }
+    .readings dl > div {
+      display: grid;
+      grid-column: span 2;
+      grid-template-rows: repeat(2, 1.05em);
+      min-width: 0;
+      align-items: center;
+      font-size: 11px;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .readings dl > .distance { grid-column: span 4; }
+    .readings dt { color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+    .readings dd { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    @container readout (min-width: 350px) {
+      .readings dl > div { display: flex; justify-content: center; align-items: center; gap: 6px; height: 16px; font-size: 12px; }
+    }
+    @media (max-height: 500px) {
+      .scene[data-rows="2"] .experiment-row { gap: 2px; }
+      .scene[data-rows="2"] .readings dl { padding: 2px; }
+      .scene[data-rows="2"] .readings dl > div { display: flex; justify-content: center; align-items: center; gap: 3px; height: 15px; font-size: 10px; }
+      .scene[data-rows="2"] .readings dd { flex-shrink: 0; max-width: 100%; }
+    }
+    .readings output { color: var(--mint); }
+    .readings .distance output { color: var(--blue); }
+    .readings .work output { color: var(--amber); }
+    .readings .power output { color: #c9b5ff; }
+    output { font-weight: 800; white-space: nowrap; }
+    .phase { font-size: 11px; color: var(--muted); white-space: nowrap; padding-inline: 3px; }
+    #lift { border-color: #3b645a; color: var(--mint); }
+    dialog {
+      width: min(380px, calc(100% - 24px));
+      max-height: calc(100% - 24px);
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #181d28;
+      color: inherit;
+    }
+    dialog::backdrop { background: #080b11b3; }
+    .quick-choice-dialog { width: min(300px, calc(100% - 24px)); }
+    .quick-choices { display: flex; gap: 8px; }
+    .quick-choices button { flex: 1; font-size: 15px; }
+    .quick-choices button[aria-pressed="true"] { color: var(--mint); border-color: var(--mint); }
+    .choice-label { color: var(--muted); font-size: 13px; }
+    #force-dialog { width: min(500px, calc(100% - 24px)); }
+    #force-dialog form { gap: 10px; }
+    #force-method { color: var(--muted); font-size: 13px; }
+    #force-diagram { display: block; width: 100%; max-height: 52dvh; background: #131925; border-radius: 10px; }
+    .force-vector { color: var(--mint); }
+    .force-vector.gravity { color: var(--blue); }
+    .force-vector.normal { color: var(--amber); }
+    .force-vector.component { color: #c9b5ff; }
+    .force-vector path { fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+    .force-vector.component .shaft { stroke-dasharray: 6 5; stroke-width: 3; }
+    .force-vector text { fill: currentColor; font-size: 14px; font-weight: 700; }
+    .force-vector .magnitude { font-size: 17px; }
+    #slope-force-options { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; }
+    #slope-force-options .label-row { gap: 6px; font-size: 13px; font-weight: 400; }
+    #normal-control { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+    #show-normal { accent-color: var(--amber); }
+    #radical-reference { margin-right: auto; color: var(--muted); font-size: 13px; }
+    .settings { display: grid; gap: 16px; }
+    .settings h2 { font-size: 19px; }
+    .label-row { font-size: 14px; font-weight: 700; }
+    .label-row output { font-size: 18px; }
+    .inline-range { gap: 8px; }
+    .inline-range input[type=range] { flex: 1; min-width: 40px; width: auto; margin: 0; }
+    .label-row select {
+      font: inherit;
+      color: inherit;
+      background: #222939;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 5px 9px;
+    }
+    .ends { color: var(--muted); font-size: 12px; }
+    #open-wheel-test { min-height: 26px; padding: 2px 8px; }
+    #wheel-test-dialog { width: min(480px, calc(100% - 24px)); }
+    #wheel-test-line { display: block; width: 100%; background: #131925; border-radius: 10px; cursor: ew-resize; }
+    #wheel-test-position { color: var(--mint); font-size: 18px; }
+    input[type=range] { width: 100%; height: 19px; margin: 3px 0 0; accent-color: var(--mint); cursor: pointer; }
+    .dialog-footer { justify-content: flex-end; }
+    @media (max-height: 500px) {
+      #settings-dialog { padding: 14px; }
+      #settings-dialog .settings { gap: 8px; }
+    }
+    #methods-dialog { width: min(540px, calc(100% - 24px)); }
+    .method-picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; padding: 0; margin: 0; border: 0; }
+    .method-picker legend { margin-bottom: 8px; padding: 0; font-size: 13px; color: var(--muted); }
+    .method-picker .label-row { display: grid; gap: 3px; }
+    .method-picker select { min-width: 0; width: 100%; }
+    #fullscreen-status:empty { display: none; }
+    #fullscreen-status { position: fixed; right: 20px; bottom: 20px; background: #272e40; padding: 12px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>仕事のシミュレーター</h1>
+      <div class="toolbar">
+        <span id="phase" class="phase" role="status">準備完了</span>
+        <button type="button" id="lift">自動で引き上げる</button>
+        <button type="button" id="reset">床に戻す</button>
+        <button type="button" id="open-methods" aria-haspopup="dialog">実験を選ぶ</button>
+        <button type="button" id="open-settings" aria-haspopup="dialog">設定</button>
+        <button type="button" id="fullscreen" aria-pressed="false">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5"/></svg>
+          <span id="fullscreen-label">全画面表示</span>
+        </button>
+      </div>
+    </header>
+    <main class="scene">
+      <div class="experiment-row">
+        <div class="columns methods">
+          <div data-method="direct"><h2><span class="index">01</span> 真上に引く</h2><p>高さ <span data-reading="height" id="current-height">0.0 m</span></p></div>
+          <div data-method="fixed" hidden><h2><span class="index">02</span> 定滑車</h2><p>高さ <span data-reading="height" id="fixed-height">0.0 m</span></p></div>
+          <div data-method="moving" hidden><h2><span class="index">03</span> 動滑車 <span id="moving-count-label">1個</span></h2><p>高さ <span data-reading="height" id="moving-height">0.0 m</span></p></div>
+          <div data-method="slope" hidden><h2><span class="index">04</span> 斜面を使う <span id="slope-angle-label">30°</span></h2><p>高さ <span data-reading="height" id="slope-height">0.0 m</span></p></div>
+          <div data-method="lever"><h2><span class="index">05</span> てこを使う</h2><p>高さ <span data-reading="height" id="lever-height">0.0 m</span></p></div>
+          <div data-method="wheel-axle"><h2><span class="index">06</span> 輪軸を使う</h2><p>高さ <span data-reading="height" id="wheel-axle-height">0.0 m</span></p></div>
+        </div>
+        <svg id="diagram" class="experiment-diagram" viewBox="0 0 890 390" role="group" aria-labelledby="diagram-title diagram-desc">
+          <title id="diagram-title">選択した実験の比較</title>
+          <desc id="diagram-desc">図の上でホイールを下に回すと、選んだ実験のひもや力点を同じ距離だけ動かします。</desc>
+          <defs>
+            <pattern id="grid" width="25" height="25" patternUnits="userSpaceOnUse">
+              <circle cx="1" cy="1" r="1" fill="#37435a"/>
+            </pattern>
+            <pattern id="floor" width="12" height="12" patternUnits="userSpaceOnUse">
+              <path d="M0 12 12 0" stroke="#35415a"/>
+            </pattern>
+            <linearGradient id="box" x2="0" y2="100%">
+              <stop stop-color="#5979c2"/>
+              <stop offset="1" stop-color="#344d89"/>
+            </linearGradient>
+          </defs>
+          <rect id="grid-plane" width="890" height="390" fill="url(#grid)"/>
+          <path id="dividers" d="M284 28V357M560 28V357" stroke="#30394a" stroke-width="2"/>
+          <rect id="floor-fill" x="36" y="357" width="818" height="12" fill="url(#floor)"/>
+          <line id="floor-line" x1="36" x2="854" y1="357" y2="357" stroke="#7c8baa" stroke-width="2"/>
+          <line id="target-line" x1="38" x2="831" y1="330" y2="330" stroke="#a4bbff" stroke-width="1.5" stroke-dasharray="6 6"/>
+          <g id="experiment-target-lines" stroke="#a4bbff" stroke-width="1.5" stroke-dasharray="6 6"/>
+          <g id="height-ruler">
+            <path d="M831 222V357" stroke="#7787a7" stroke-width="1.5"/>
+            <text x="876" y="195" text-anchor="middle" fill="#aeb9ce" font-size="20">高さ（m）</text>
+            <g id="ticks" fill="#aeb9ce" font-size="20"></g>
+            <circle id="target-marker" cx="831" cy="330" r="5" fill="#a4bbff"/>
+            <g id="experiment-target-markers" fill="#a4bbff"/>
+          </g>
+          <g id="direct-diagram" data-method="direct">
+            <g id="load">
+              <path d="M160 254v47" stroke="#d3dcee" stroke-width="3"/>
+              <rect x="145" y="247" width="30" height="9" rx="4.5" fill="#b5c2d9"/>
+              <g class="force-target" data-force-target="direct" role="button" tabindex="0" aria-haspopup="dialog" aria-label="真上に引く場合の力の図">
+                <rect x="118" y="302" width="84" height="55" rx="8" fill="url(#box)" stroke="#99b4f0" stroke-width="2"/>
+                <text id="mass-in-scene" data-reading="mass" x="160" y="337" text-anchor="middle" fill="#fff" font-size="22" font-weight="700">500 g</text>
+              </g>
+            </g>
+            <g id="pull-arrow">
+              <path d="M124 283v-37m-7 8 7-8 7 8" fill="none" stroke="#69e5bc" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+          <g id="fixed-diagram" data-method="fixed" hidden>
+            <g aria-hidden="true">
+              <rect x="451" y="15" width="134" height="10" fill="url(#floor)"/>
+              <path d="M451 25H585M518 25V56" fill="none" stroke="#7c8baa" stroke-width="3"/>
+              <circle cx="518" cy="56" r="22" fill="#344361" stroke="#8b9dbe" stroke-width="2"/>
+              <path id="pulley-spokes" d="M502 56H534M518 40V72" stroke="#8b9dbe" stroke-width="2"/>
+              <circle cx="518" cy="56" r="5" fill="#d3dcee"/>
+              <path id="pulley-rope" d="M494 302V56a24 24 0 0 1 48 0V105" fill="none" stroke="#d3dcee" stroke-width="3"/>
+            </g>
+            <g id="pulley-load" class="force-target" data-force-target="fixed" role="button" tabindex="0" aria-haspopup="dialog" aria-label="定滑車を使う場合の力の図">
+              <rect x="452" y="302" width="84" height="55" rx="8" fill="url(#box)" stroke="#99b4f0" stroke-width="2"/>
+              <text id="pulley-mass" data-reading="mass" x="494" y="337" text-anchor="middle" fill="#fff" font-size="22" font-weight="700">500 g</text>
+            </g>
+            <g id="pulley-pull">
+              <rect x="527" y="100" width="30" height="9" rx="4.5" fill="#b5c2d9"/>
+              <path d="M577 94v37m-7-8 7 8 7-8" fill="none" stroke="#69e5bc" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+          <g id="moving-diagram" data-method="moving" hidden>
+            <g id="moving-fixed-bank" aria-hidden="true"></g>
+            <g id="moving-wheel-bank" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="moving-count-dialog" aria-label="動滑車の個数を変更"></g>
+            <g id="moving-load">
+              <g class="force-target" data-force-target="moving" role="button" tabindex="0" aria-haspopup="dialog" aria-label="動滑車を使う場合の力の図">
+                <rect x="627" y="302" width="84" height="55" rx="8" fill="url(#box)" stroke="#99b4f0" stroke-width="2"/>
+                <text id="moving-mass" data-reading="mass" x="669" y="337" text-anchor="middle" fill="#fff" font-size="22" font-weight="700">500 g</text>
+              </g>
+            </g>
+            <path id="moving-rope" fill="none" stroke="#d3dcee" stroke-width="3" pointer-events="none"/>
+            <path id="supporting-rope" fill="none" stroke="#8cd8c1" stroke-width="3" pointer-events="none"/>
+            <path id="moving-flow" fill="none" stroke="#69e5bc" stroke-width="3" stroke-dasharray="3 15" pointer-events="none"/>
+            <g id="moving-pull" pointer-events="none">
+              <rect id="moving-grip" x="-15" y="-5" width="30" height="9" rx="4.5" fill="#b5c2d9"/>
+              <path d="M28-36v37m-7-8 7 8 7-8" fill="none" stroke="#69e5bc" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+          <g id="slope-diagram" data-method="slope" hidden>
+            <path id="slope-track" fill="#28394c" fill-opacity=".72" stroke="#8297b5" stroke-width="2" stroke-linejoin="round"/>
+            <path id="slope-angle-arc" fill="none" stroke="#69e5bc" stroke-width="2"/>
+            <g id="slope-load">
+              <g id="slope-carriage">
+                <g class="force-target" data-force-target="slope" role="button" tabindex="0" aria-haspopup="dialog" aria-label="斜面を使う場合の力の図">
+                  <rect x="0" y="-37" width="68" height="37" rx="5" fill="url(#box)" stroke="#99b4f0" stroke-width="2"/>
+                  <circle r="2.5" fill="#a4bbff"/>
+                  <text data-reading="mass" x="34" y="-13" text-anchor="middle" fill="#fff" font-size="16" font-weight="700">500 g</text>
+                </g>
+                <path d="M68 -16H95" stroke="#d3dcee" stroke-width="3"/>
+                <rect x="92" y="-24" width="7" height="16" rx="3" fill="#b5c2d9"/>
+                <path d="M79 -37H109m-7-7 7 7-7 7" fill="none" stroke="#69e5bc" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </g>
+            </g>
+            <g id="slope-angle-button" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="slope-angle-dialog" aria-label="斜面の角度を変更">
+              <rect x="-30" y="-12" width="60" height="24" rx="6"/>
+              <text id="slope-angle-value" x="-5" y="5" text-anchor="middle">30°</text>
+              <path d="M14 -2l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+          <g id="lever-diagram" data-method="lever">
+            <path d="M240 257 211 357H269Z" fill="#28394c" stroke="#8297b5" stroke-width="2" stroke-linejoin="round"/>
+            <line id="lever-beam" stroke="#99b4f0" stroke-width="8" stroke-linecap="round"/>
+            <g id="lever-pivot-button" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="lever-ratio-dialog" aria-label="てこの長さの比と向きを変更">
+              <path d="M240 257 211 357H269Z" fill="transparent"/>
+              <circle cx="240" cy="257" r="7" fill="#d3dcee" stroke="#344d89" stroke-width="2"/>
+              <text x="240" y="325" text-anchor="middle">支点</text>
+              <text id="lever-ratio-label" x="240" y="345" text-anchor="middle">2:1</text>
+            </g>
+            <g id="lever-effort">
+              <circle r="5" fill="#69e5bc"/>
+              <path d="M0-41V-10m-7-8 7 8 7-8" fill="none" stroke="#69e5bc" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <text id="lever-effort-label" x="13" y="-22" fill="#a5efd7" font-size="15">力点</text>
+            </g>
+            <g id="lever-load">
+              <g class="force-target" data-force-target="lever" role="button" tabindex="0" aria-haspopup="dialog" aria-label="てこを使う場合の力の図">
+                <rect x="-35" y="-49" width="70" height="48" rx="7" fill="url(#box)" stroke="#99b4f0" stroke-width="2"/>
+                <text data-reading="mass" x="0" y="-18" text-anchor="middle" fill="#fff" font-size="18" font-weight="700">500 g</text>
+              </g>
+              <path d="M-39 0H39" stroke="#b5c2d9" stroke-width="3" stroke-linecap="round"/>
+              <circle r="4.5" fill="#d3dcee" stroke="#344d89" stroke-width="1.5"/>
+              <text x="0" y="19" text-anchor="middle" fill="#aeb9ce" font-size="15">作用点</text>
+            </g>
+          </g>
+          <g id="wheel-axle-diagram" data-method="wheel-axle">
+            <rect x="68" y="6" width="124" height="8" fill="url(#floor)"/>
+            <path d="M68 14H192M130 14V64" fill="none" stroke="#7c8baa" stroke-width="3"/>
+            <g id="wheel-axle-button" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="wheel-axle-ratio-dialog" aria-label="輪軸の半径の比を変更">
+              <g id="wheel-axle-spokes">
+                <g id="wheel-axle-outer" class="wheel-axle-face">
+                  <circle class="face" cx="130" cy="64" r="46" stroke-width="3"/>
+                  <path class="spokes" d="M89 64H171M130 23V105" stroke-width="4"/>
+                  <circle cx="130" cy="27" r="3" fill="#d3deff"/>
+                </g>
+                <g id="wheel-axle-inner" class="wheel-axle-face axle-face">
+                  <circle class="face" cx="130" cy="64" r="23" stroke-width="2"/>
+                  <path class="spokes" d="M115 64H145M130 49V79" stroke-width="2"/>
+                  <circle cx="130" cy="64" r="4" fill="#d3dcee"/>
+                </g>
+              </g>
+              <rect class="ratio-badge" x="194" y="15" width="54" height="23" rx="6"/>
+              <text id="wheel-axle-ratio-label" x="221" y="32" text-anchor="middle">2:1</text>
+            </g>
+            <path id="wheel-axle-effort-rope" fill="none" stroke="#d3dcee" stroke-width="3" pointer-events="none"/>
+            <path id="wheel-axle-load-rope" fill="none" stroke="#8cd8c1" stroke-width="3" pointer-events="none"/>
+            <path id="wheel-axle-label-guides" fill="none" stroke="#8297b5" stroke-width="1.5" pointer-events="none"/>
+            <text x="66" y="50" text-anchor="end" fill="#c2d0ec" font-size="15">輪</text>
+            <text x="66" y="88" text-anchor="end" fill="#a5efd7" font-size="15">軸</text>
+            <g id="wheel-axle-effort">
+              <rect x="162" y="75" width="28" height="9" rx="4.5" fill="#b5c2d9"/>
+              <path d="M203 43v37m-7-8 7 8 7-8" fill="none" stroke="#69e5bc" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+            <g id="wheel-axle-load" class="force-target" data-force-target="wheel-axle" role="button" tabindex="0" aria-haspopup="dialog" aria-label="輪軸を使う場合の力の図">
+              <rect x="69" y="302" width="76" height="55" rx="8" fill="url(#box)" stroke="#99b4f0" stroke-width="2"/>
+              <text data-reading="mass" x="107" y="337" text-anchor="middle" fill="#fff" font-size="20" font-weight="700">500 g</text>
+            </g>
+          </g>
+        </svg>
+        <div class="columns readings">
+          <dl data-method="direct" aria-label="真上に引く">
+            <div><dt>力</dt><dd><output data-reading="force" id="force">5 N</output></dd></div>
+            <div class="distance"><dt>ひもを引いた距離</dt><dd><output data-reading="distance" id="distance" aria-live="off">0.0 m</output></dd></div>
+            <div class="work"><dt>仕事</dt><dd><output data-reading="work" id="work" aria-live="off">0 J</output></dd></div>
+            <div><dt>時間</dt><dd><output data-reading="time" aria-live="off">0.00 s</output></dd></div>
+            <div class="power"><dt>仕事率</dt><dd><output data-reading="power" aria-live="off">0 W</output></dd></div>
+          </dl>
+          <dl data-method="fixed" aria-label="定滑車" hidden>
+            <div><dt>力</dt><dd><output data-reading="force" id="fixed-force">5 N</output></dd></div>
+            <div class="distance"><dt>ひもを引いた距離</dt><dd><output data-reading="distance" id="fixed-distance" aria-live="off">0.0 m</output></dd></div>
+            <div class="work"><dt>仕事</dt><dd><output data-reading="work" id="fixed-work" aria-live="off">0 J</output></dd></div>
+            <div><dt>時間</dt><dd><output data-reading="time" aria-live="off">0.00 s</output></dd></div>
+            <div class="power"><dt>仕事率</dt><dd><output data-reading="power" aria-live="off">0 W</output></dd></div>
+          </dl>
+          <dl data-method="moving" aria-label="動滑車" hidden>
+            <div><dt>力</dt><dd><output data-reading="force" id="moving-force">2.5 N</output></dd></div>
+            <div class="distance"><dt>ひもを引いた距離</dt><dd><output data-reading="distance" id="moving-distance" aria-live="off">0.0 m</output></dd></div>
+            <div class="work"><dt>仕事</dt><dd><output data-reading="work" id="moving-work" aria-live="off">0 J</output></dd></div>
+            <div><dt>時間</dt><dd><output data-reading="time" aria-live="off">0.00 s</output></dd></div>
+            <div class="power"><dt>仕事率</dt><dd><output data-reading="power" aria-live="off">0 W</output></dd></div>
+          </dl>
+          <dl data-method="slope" aria-label="斜面" hidden>
+            <div><dt>力</dt><dd><output data-reading="force" id="slope-force">2.5 N</output></dd></div>
+            <div class="distance"><dt>ひもを引いた距離</dt><dd><output data-reading="distance" id="slope-distance" aria-live="off">0.0 m</output></dd></div>
+            <div class="work"><dt>仕事</dt><dd><output data-reading="work" id="slope-work" aria-live="off">0 J</output></dd></div>
+            <div><dt>時間</dt><dd><output data-reading="time" aria-live="off">0.00 s</output></dd></div>
+            <div class="power"><dt>仕事率</dt><dd><output data-reading="power" aria-live="off">0 W</output></dd></div>
+          </dl>
+          <dl data-method="lever" aria-label="てこ">
+            <div><dt>力</dt><dd><output data-reading="force" id="lever-force">2.5 N</output></dd></div>
+            <div class="distance"><dt>押した距離</dt><dd><output data-reading="distance" id="lever-distance" aria-live="off">0.0 m</output></dd></div>
+            <div class="work"><dt>仕事</dt><dd><output data-reading="work" id="lever-work" aria-live="off">0 J</output></dd></div>
+            <div><dt>時間</dt><dd><output data-reading="time" aria-live="off">0.00 s</output></dd></div>
+            <div class="power"><dt>仕事率</dt><dd><output data-reading="power" aria-live="off">0 W</output></dd></div>
+          </dl>
+          <dl data-method="wheel-axle" aria-label="輪軸">
+            <div><dt>力</dt><dd><output data-reading="force" id="wheel-axle-force">2.5 N</output></dd></div>
+            <div class="distance"><dt>ひもを引いた距離</dt><dd><output data-reading="distance" id="wheel-axle-distance" aria-live="off">0.0 m</output></dd></div>
+            <div class="work"><dt>仕事</dt><dd><output data-reading="work" id="wheel-axle-work" aria-live="off">0 J</output></dd></div>
+            <div><dt>時間</dt><dd><output data-reading="time" aria-live="off">0.00 s</output></dd></div>
+            <div class="power"><dt>仕事率</dt><dd><output data-reading="power" aria-live="off">0 W</output></dd></div>
+          </dl>
+        </div>
+      </div>
+    </main>
+    <dialog id="force-dialog" aria-labelledby="force-title" aria-describedby="force-method">
+      <form class="settings" method="dialog">
+        <div><h2 id="force-title">引き上げるときに物体に働く力</h2><p id="force-method"></p></div>
+        <svg id="force-diagram" viewBox="0 0 460 318" role="img" aria-label="力の向きと大きさ">
+          <g id="force-pulley" hidden>
+            <path d="M230 77V133" stroke="#8297b5" stroke-width="4"/>
+            <circle cx="230" cy="77" r="22" fill="#34575a" stroke="#8cd8c1" stroke-width="2"/>
+            <path d="M206 37V77a24 24 0 0 0 48 0V37" fill="none" stroke="#d3dcee" stroke-width="2"/>
+            <path d="M215 77H245M230 62V92" stroke="#8cd8c1" stroke-width="2"/>
+            <circle cx="230" cy="77" r="4" fill="#d3dcee"/>
+          </g>
+          <g id="force-pulley-bank" hidden></g>
+          <g id="force-object">
+            <path id="force-ramp" d="M-51 25H51" stroke="#8297b5" stroke-width="3"/>
+            <rect x="-37" y="-25" width="74" height="50" rx="6" fill="#344d89" stroke="#99b4f0" stroke-width="2"/>
+          </g>
+          <g id="force-gravity" class="force-vector gravity">
+            <path class="shaft"/><path/><text><tspan></tspan><tspan class="magnitude" dy="19"></tspan></text>
+          </g>
+          <g id="force-pull" class="force-vector">
+            <path class="shaft"/><path/><text><tspan></tspan><tspan class="magnitude" dy="19"></tspan></text>
+          </g>
+          <g id="force-pull-second" class="force-vector" hidden>
+            <path class="shaft"/><path/><text><tspan></tspan><tspan class="magnitude" dy="19"></tspan></text>
+          </g>
+          <g id="force-normal" class="force-vector normal" hidden>
+            <path class="shaft"/><path/><text><tspan></tspan><tspan class="magnitude" dy="19"></tspan></text>
+          </g>
+          <g id="force-components" hidden>
+            <g id="force-parallel" class="force-vector component">
+              <path class="shaft"/><path/><text><tspan></tspan><tspan class="magnitude" dy="19"></tspan></text>
+            </g>
+            <g id="force-perpendicular" class="force-vector component">
+              <path class="shaft"/><path/><text><tspan></tspan><tspan class="magnitude" dy="19"></tspan></text>
+            </g>
+          </g>
+        </svg>
+        <div id="slope-force-options" hidden>
+          <label id="normal-control"><input id="show-normal" type="checkbox" checked>垂直抗力を表示</label>
+          <div class="label-row">
+            <label for="force-notation">力の表記</label>
+            <select id="force-notation">
+              <option value="approximate">近似値で表示</option>
+              <option value="radical">ルートで表示</option>
+            </select>
+          </div>
+        </div>
+        <div class="dialog-footer">
+          <span id="radical-reference" hidden>√2 ≈ 1.414　√3 ≈ 1.732</span>
+          <button type="submit" autofocus>閉じる</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="methods-dialog" aria-labelledby="methods-title">
+      <form id="method-selection" class="settings" method="dialog">
+        <h2 id="methods-title">実験を選ぶ</h2>
+        <fieldset id="experiment-slots" class="method-picker">
+          <legend>比べる実験（最大6つ）</legend>
+        </fieldset>
+        <div class="dialog-footer"><button type="submit">完了</button></div>
+      </form>
+    </dialog>
+    <dialog id="experiment-settings-dialog" aria-labelledby="experiment-settings-title">
+      <form class="settings" method="dialog">
+        <h2 id="experiment-settings-title">実験の条件</h2>
+        <div>
+          <div class="label-row"><label for="experiment-mass">物体の質量</label><output id="experiment-mass-value" for="experiment-mass"></output></div>
+          <input type="range" id="experiment-mass" min="100" max="2000" step="100" value="500">
+        </div>
+        <div>
+          <div class="label-row"><label for="experiment-height">目標の高さ</label><output id="experiment-height-value" for="experiment-height"></output></div>
+          <input type="range" id="experiment-height" min="1" max="100" step="1" value="20">
+        </div>
+        <div class="label-row" data-condition="slope" hidden>
+          <label for="experiment-angle">斜面の角度</label>
+          <select id="experiment-angle"><option value="30">30°</option><option value="45">45°</option><option value="60">60°</option></select>
+        </div>
+        <div class="label-row" data-condition="moving" hidden>
+          <label for="experiment-moving-count">動滑車の個数</label>
+          <select id="experiment-moving-count"><option>1</option><option>2</option><option>3</option><option>4</option></select>
+        </div>
+        <div class="label-row" data-condition="lever" hidden>
+          <label for="experiment-lever-ratio">力点側と作用点側の長さの比</label>
+          <select id="experiment-lever-ratio"><option>1:2</option><option>1:1</option><option>2:1</option></select>
+        </div>
+        <div class="label-row" data-condition="lever" hidden>
+          <label for="experiment-lever-direction">てこの向き</label>
+          <select id="experiment-lever-direction"><option value="left">左を押す</option><option value="right">右を押す</option></select>
+        </div>
+        <div class="label-row" data-condition="wheel-axle" hidden>
+          <label for="experiment-wheel-ratio">輪と軸の半径の比</label>
+          <select id="experiment-wheel-ratio"><option>1:2</option><option>2:1</option></select>
+        </div>
+        <div class="dialog-footer"><button type="submit">完了</button></div>
+      </form>
+    </dialog>
+    <dialog id="moving-count-dialog" class="quick-choice-dialog" aria-labelledby="moving-count-title">
+      <form class="settings" method="dialog">
+        <h2 id="moving-count-title">動滑車の個数</h2>
+        <div class="quick-choices">
+          <button type="submit" value="1">1個</button>
+          <button type="submit" value="2">2個</button>
+          <button type="submit" value="3">3個</button>
+          <button type="submit" value="4">4個</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="slope-angle-dialog" class="quick-choice-dialog" aria-labelledby="slope-angle-title">
+      <form class="settings" method="dialog">
+        <h2 id="slope-angle-title">斜面の角度</h2>
+        <div id="slope-angle-choices" class="quick-choices"></div>
+      </form>
+    </dialog>
+    <dialog id="lever-ratio-dialog" class="quick-choice-dialog" aria-labelledby="lever-ratio-title" aria-describedby="lever-ratio-order">
+      <form class="settings" method="dialog">
+        <div>
+          <h2 id="lever-ratio-title">てこの設定</h2>
+          <p id="lever-ratio-order" class="choice-label">支点〜力点 : 支点〜作用点</p>
+        </div>
+        <div class="quick-choices">
+          <button type="submit" value="1:2">1:2</button>
+          <button type="submit" value="1:1">1:1</button>
+          <button type="submit" value="2:1">2:1</button>
+        </div>
+        <div class="quick-choices" role="group" aria-label="てこの向き">
+          <button type="submit" name="direction" value="left">左を押す</button>
+          <button type="submit" name="direction" value="right">右を押す</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="wheel-axle-ratio-dialog" class="quick-choice-dialog" aria-labelledby="wheel-axle-ratio-title" aria-describedby="wheel-axle-ratio-order">
+      <form class="settings" method="dialog">
+        <div>
+          <h2 id="wheel-axle-ratio-title">輪軸の半径の比</h2>
+          <p id="wheel-axle-ratio-order" class="choice-label">輪の半径 : 軸の半径</p>
+        </div>
+        <div class="quick-choices">
+          <button type="submit" value="1:2">1:2</button>
+          <button type="submit" value="2:1">2:1</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="settings-dialog" aria-labelledby="settings-title">
+      <form class="settings" method="dialog">
+        <h2 id="settings-title">共通設定</h2>
+        <div>
+          <div class="label-row"><label for="mass">物体の質量</label><output id="mass-value" for="mass">500 g</output></div>
+          <input type="range" id="mass" min="100" max="2000" step="100" value="500" aria-valuetext="500 グラム">
+          <div class="ends"><span>100 g</span><span>2,000 g</span></div>
+        </div>
+        <div>
+          <div class="label-row"><label for="height">目標の高さ</label><output id="height-value" for="height">2.0 m</output></div>
+          <input type="range" id="height" min="1" max="100" step="1" value="20" aria-valuetext="2.0 メートル">
+          <div class="ends"><span>0.1 m</span><span>10.0 m</span></div>
+        </div>
+        <div>
+          <div class="label-row"><label for="wheel-distance">ホイール1目盛りで引く距離</label><output id="wheel-distance-value" for="wheel-distance">0.20 m</output></div>
+          <input type="range" id="wheel-distance" min="5" max="200" step="5" value="20" aria-valuetext="0.20 メートル">
+          <div class="ends">
+            <span>0.05 m</span>
+            <button type="button" id="open-wheel-test" aria-haspopup="dialog" aria-controls="wheel-test-dialog">ホイールを試す</button>
+            <span>2.00 m</span>
+          </div>
+        </div>
+        <div class="label-row inline-range">
+          <label for="auto-speed">自動で1秒に引く距離</label>
+          <input type="range" id="auto-speed" min="1" max="50" step="1" value="10" aria-valuetext="1秒に1.0 メートル">
+          <output id="auto-speed-value" for="auto-speed">1.0 m</output>
+        </div>
+        <div class="label-row">
+          <label for="slope-angle">斜面の角度</label>
+          <select id="slope-angle">
+            <option value="30">30°</option>
+            <option value="45">45°</option>
+            <option value="60">60°</option>
+          </select>
+        </div>
+        <div class="dialog-footer"><button type="submit">完了</button></div>
+      </form>
+    </dialog>
+    <dialog id="wheel-test-dialog" aria-labelledby="wheel-test-title">
+      <form class="settings" method="dialog">
+        <div class="label-row">
+          <h2 id="wheel-test-title">ホイールを試す</h2>
+          <output id="wheel-test-position" aria-label="点の位置" aria-live="off">0.00 m</output>
+        </div>
+        <svg id="wheel-test-line" viewBox="0 0 360 96" role="img" aria-label="0 mから3 mまでの線分">
+          <path d="M30 42H330" stroke="#a4bbff" stroke-width="3" stroke-linecap="round"/>
+          <path d="M30 35V50M130 35V50M230 35V50M330 35V50" stroke="#8297b5" stroke-width="2"/>
+          <g fill="#aeb9ce" font-size="14" text-anchor="middle">
+            <text x="30" y="72">0 m</text><text x="130" y="72">1 m</text>
+            <text x="230" y="72">2 m</text><text x="330" y="72">3 m</text>
+          </g>
+          <circle id="wheel-test-point" cx="30" cy="42" r="8" fill="#69e5bc" stroke="#131925" stroke-width="2"/>
+        </svg>
+        <div class="dialog-footer"><button type="submit">設定に戻る</button></div>
+      </form>
+    </dialog>
+    <p id="fullscreen-status" role="status"></p>
+  </div>
+  <script>
+    const byId = id => document.getElementById(id);
+    const massInput = byId('mass');
+    const heightInput = byId('height');
+    const wheelDistanceInput = byId('wheel-distance');
+    const autoSpeedInput = byId('auto-speed');
+    const wheelTestDialog = byId('wheel-test-dialog');
+    const slopeAngleInput = byId('slope-angle');
+    const slopeAngleDialog = byId('slope-angle-dialog');
+    const leverRatioDialog = byId('lever-ratio-dialog');
+    const wheelAxleRatioDialog = byId('wheel-axle-ratio-dialog');
+    const liftButton = byId('lift');
+    const resetButton = byId('reset');
+    const fullscreenButton = byId('fullscreen');
+    const diagram = byId('diagram');
+    const scene = document.querySelector('.scene');
+    const methodsDialog = byId('methods-dialog');
+    const conditionsDialog = byId('experiment-settings-dialog');
+    const movingCountDialog = byId('moving-count-dialog');
+    const forceDialog = byId('force-dialog');
+    const normalToggle = byId('show-normal');
+    const forceNotation = byId('force-notation');
+    const experimentTypes = new Map([
+      ['direct', '01 真上に引く', 1, 160],
+      ['fixed', '02 定滑車', 1, 518],
+      ['moving', '03 動滑車', 2, 695],
+      ['slope', '04 斜面を使う', 2, 137.5],
+      ['lever', '05 てこを使う', 2, 205],
+      ['wheel-axle', '06 輪軸を使う', 2, 132]
+    ].map(([type, name, inputRatio, center]) => {
+      const templates = [...document.querySelectorAll(`[data-method="${type}"]`)];
+      templates.forEach(template => template.remove());
+      return [type, { name, inputRatio, center, templates }];
+    }));
+    const slotNames = ['A', 'B', 'C', 'D', 'E', 'F'];
+    const initialMethods = ['direct', 'lever', 'wheel-axle'];
+    const methodInputs = slotNames.map((slot, index) => {
+      const row = document.createElement('div');
+      row.className = 'label-row';
+      const label = document.createElement('label');
+      const select = document.createElement('select');
+      select.id = `experiment-slot-${slot}`;
+      label.htmlFor = select.id;
+      label.textContent = `実験 ${slot}`;
+      select.add(new Option('選ばない', ''));
+      for (const [type, { name }] of experimentTypes) select.add(new Option(name, type));
+      select.value = initialMethods[index] ?? '';
+      row.append(label, select);
+      byId('experiment-slots').append(row);
+      return select;
+    });
+    let slots = slotNames.map(() => null);
+    let selectedMethods = [];
+    let settingsMethod = null;
+    let forceMethod = null;
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    const floor = 357;
+    const maxHeight = Number(heightInput.max) / 10;
+    const pixelsPerMetre = (floor - 222) / maxHeight;
+    const rulerWidth = 112;
+    const leverGeometry = { pivotX: 240, pivotY: 257, loadArm: 112 };
+    const formatNumber = new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 3 });
+    const formatMetres = new Intl.NumberFormat('ja-JP', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+    const formatHeight = metres => `${formatMetres.format(metres)} m`;
+    let wheelTestPosition = 0;
+    let frame = null;
+    let phase = 'ready';
+
+    for (let metres = 0; metres <= maxHeight; metres += 1) {
+      const y = floor - metres * pixelsPerMetre;
+      const x = metres % 2 === 0 ? 842 : 884;
+      const tick = `<line x1="831" x2="${x - 1}" y1="${y}" y2="${y}" stroke="#7787a7"/>`;
+      const label = `<text x="${x + 18}" y="${y + 6}" text-anchor="middle">${metres}</text>`;
+      const marker = metres === 0 ? label :
+        `<g class="target-height-tick" data-height="${metres}" role="button" tabindex="0" aria-pressed="false" aria-label="目標の高さを${metres}メートルに変更">
+          <rect x="${x}" y="${y - 11.5}" width="36" height="23" rx="5"/>${label}
+        </g>`;
+      byId('ticks').insertAdjacentHTML('beforeend', tick + marker);
+    }
+    const firstRow = diagram.closest('.experiment-row');
+    const secondRow = firstRow.cloneNode(true);
+    secondRow.querySelector('defs').remove();
+    const rows = [firstRow, secondRow].map((container, index) => {
+      const elements = new Map();
+      for (const node of container.querySelectorAll('[id]')) {
+        elements.set(node.id, node);
+        if (index) node.id = `row-2-${node.id}`;
+      }
+      const canvas = elements.get('diagram');
+      if (index) {
+        canvas.setAttribute('aria-labelledby', 'row-2-diagram-title row-2-diagram-desc');
+        elements.get('diagram-title').textContent = '選択した実験の比較・下段';
+      }
+      return {
+        container, canvas, element: id => elements.get(id), methods: [],
+        ticks: [...canvas.querySelectorAll('.target-height-tick')]
+      };
+    });
+    secondRow.hidden = true;
+    scene.append(secondRow);
+
+    function createExperiment(type, index) {
+      const { templates, name, inputRatio, center } = experimentTypes.get(type);
+      const slot = slotNames[index];
+      const panels = templates.map(template => template.cloneNode(true));
+      const elements = new Map();
+      const readings = {};
+      for (const panel of panels) {
+        panel.removeAttribute('hidden');
+        panel.dataset.slot = slot;
+        for (const element of [panel, ...panel.querySelectorAll('[id], [data-reading]')]) {
+          if (element.id) {
+            elements.set(element.id, element);
+            if (element.hasAttribute('aria-haspopup')) element.classList.add(element.id);
+            element.id = `experiment-${slot}-${element.id}`;
+          }
+          if (element.dataset.reading) readings[element.dataset.reading] = element;
+        }
+      }
+      const goalLine = document.createElementNS(diagram.namespaceURI, 'line');
+      const goalMarker = document.createElementNS(diagram.namespaceURI, 'circle');
+      goalMarker.setAttribute('cx', '831');
+      goalMarker.setAttribute('r', '4');
+      const goalLabel = document.createElement('span');
+      goalLabel.className = 'experiment-goal';
+      const massLabel = document.createElement('span');
+      massLabel.className = 'experiment-mass';
+      panels[0].querySelector('p').append(goalLabel, massLabel);
+      const conditions = document.createElement('button');
+      conditions.type = 'button';
+      conditions.className = 'experiment-conditions';
+      conditions.textContent = `条件 ${slot}`;
+      conditions.setAttribute('aria-haspopup', 'dialog');
+      conditions.setAttribute('aria-label', `実験 ${slot} の条件を設定`);
+      panels[0].querySelector('h2').append(conditions);
+      const method = {
+        type, name, slot, inputRatio, center, columnWidth: 275, panels, readings, diagram: panels[1],
+        element: id => elements.get(id), goalLine, goalMarker, goalLabel, massLabel,
+        grams: massInput.valueAsNumber, targetHeight: heightInput.valueAsNumber / 10,
+        angle: Number(slopeAngleInput.value), ratio: '2:1', reversed: false, pulleyCount: 1,
+        height: 0, elapsedMs: 0, manualSince: null
+      };
+      conditions.addEventListener('click', () => openConditions(method));
+      bindExperimentButtons(method);
+      updateExperiment(method);
+      return method;
+    }
+
+    function fitDiagram() {
+      const visibleRows = rows.filter(row => row.methods.length);
+      if (!visibleRows.length) return;
+      const rowWidths = visibleRows.map(row => row.methods.reduce((width, method) => width + method.columnWidth, 0));
+      const baseWidth = Math.max(...rowWidths) + rulerWidth;
+      for (const row of visibleRows) {
+        const columns = row.methods.map(method => `minmax(0, ${method.columnWidth}fr)`).join(' ');
+        row.container.style.setProperty('--method-columns', columns);
+        row.container.style.setProperty('--ruler-gutter', `${100 * rulerWidth / baseWidth}%`);
+      }
+      const minHeight = Math.min(...visibleRows.map(row => row.canvas.getBoundingClientRect().height));
+      const width = Math.max(baseWidth, diagram.getBoundingClientRect().width * 390 / Math.max(1, minHeight));
+      const gutter = width * rulerWidth / baseWidth;
+      const rulerX = width - gutter + 6 * width / baseWidth;
+      visibleRows.forEach((row, index) => fitDiagramRow(row, width, rulerX, (width - gutter) / rowWidths[index]));
+    }
+
+    function fitDiagramRow({ canvas, element, methods, ticks }, width, rulerX, scale) {
+      canvas.setAttribute('viewBox', `0 0 ${width} 390`);
+      element('grid-plane').setAttribute('width', width);
+      element('floor-fill').setAttribute('width', width - 72);
+      element('floor-line').setAttribute('x2', width - 36);
+      const sharedGoal = methods.every(method => method.targetHeight === methods[0].targetHeight);
+      const targetLine = element('target-line');
+      const targetMarker = element('target-marker');
+      const targetY = floor - methods[0].targetHeight * pixelsPerMetre;
+      targetLine.toggleAttribute('hidden', !sharedGoal);
+      targetMarker.toggleAttribute('hidden', !sharedGoal);
+      targetLine.setAttribute('x2', rulerX);
+      targetLine.setAttribute('y1', targetY);
+      targetLine.setAttribute('y2', targetY);
+      targetMarker.setAttribute('cy', targetY);
+      element('height-ruler').setAttribute('transform', `translate(${rulerX - 831} 0)`);
+      for (const tick of ticks) {
+        tick.setAttribute('aria-pressed', String(methods.some(method => method.targetHeight === Number(tick.dataset.height))));
+      }
+      let columnStart = 0;
+      const dividers = [];
+      for (const method of methods) {
+        if (columnStart > 0) dividers.push(`M${columnStart} 28V357`);
+        const columnWidth = method.columnWidth * scale;
+        const offset = columnStart + columnWidth / 2 - method.center;
+        method.diagram.setAttribute('transform', `translate(${offset} 0)`);
+        const y = floor - method.targetHeight * pixelsPerMetre;
+        method.goalLine.toggleAttribute('hidden', sharedGoal);
+        method.goalMarker.toggleAttribute('hidden', sharedGoal);
+        method.goalLine.setAttribute('x1', columnStart + 12);
+        method.goalLine.setAttribute('x2', columnStart + columnWidth - 10);
+        method.goalLine.setAttribute('y1', y);
+        method.goalLine.setAttribute('y2', y);
+        method.goalMarker.setAttribute('cy', y);
+        columnStart += columnWidth;
+      }
+      element('dividers').setAttribute('d', dividers.join(''));
+    }
+
+    function updateSlope(method) {
+      const { angle, element } = method;
+      const radians = angle * Math.PI / 180;
+      const sine = angle === 30 ? 0.5 : Math.sin(radians);
+      const cosine = Math.cos(radians);
+      method.inputRatio = 1 / sine;
+      method.runPerRise = cosine / sine;
+      method.startX = 6 + 37 * sine;
+      method.columnWidth = angle === 30 ? 345 : 275;
+      const trackLength = maxHeight * pixelsPerMetre * method.inputRatio + 74;
+      const endX = method.startX + trackLength * cosine;
+      const endY = floor - trackLength * sine;
+      method.center = (method.startX + endX) / 2;
+      element('slope-track').setAttribute('d', `M${method.startX} ${floor}L${endX} ${endY}V${floor}Z`);
+      const arcRadius = 40;
+      element('slope-angle-arc').setAttribute('d',
+        `M${method.startX + arcRadius} ${floor}A${arcRadius} ${arcRadius} 0 0 0 ${method.startX + arcRadius * cosine} ${floor - arcRadius * sine}`);
+      element('slope-angle-button').setAttribute('transform', `translate(${method.startX + 84} ${floor - 16})`);
+      element('slope-angle-button').setAttribute('aria-label', `斜面の角度 ${angle}度。角度を変更`);
+      element('slope-carriage').setAttribute('transform', `rotate(${-angle})`);
+      element('slope-angle-label').textContent = `${angle}°`;
+      element('slope-angle-value').textContent = `${angle}°`;
+    }
+
+    function sheaveMarkup(x, y, radius, moving) {
+      const rim = moving ? '#8cd8c1' : '#8b9dbe';
+      const fill = moving ? '#34575a' : '#344361';
+      const spoke = radius - 8;
+      return `<g data-sheave>
+        <circle class="${moving ? 'moving-sheave' : ''}" cx="${x}" cy="${y}" r="${radius - 2}" fill="${fill}" stroke="${rim}" stroke-width="2"/>
+        <path d="M${x - spoke} ${y}H${x + spoke}M${x} ${y - spoke}V${y + spoke}" stroke="${rim}" stroke-width="2"/>
+        <circle cx="${x}" cy="${y}" r="4" fill="#d3dcee"/>
+      </g>`;
+    }
+
+    function updateMovingPulley(method) {
+      const { pulleyCount, element } = method;
+      const radius = pulleyCount === 1 ? 22 : 18;
+      const startX = 647;
+      const endX = startX + 4 * radius * pulleyCount;
+      const movingX = Array.from({ length: pulleyCount }, (_, index) => startX + (4 * index + 1) * radius);
+      const fixedX = movingX.map(x => x + 2 * radius);
+      const centre = (movingX[0] + movingX.at(-1)) / 2;
+      const movingBank = element('moving-wheel-bank');
+      const fixedBank = element('moving-fixed-bank');
+      const left = startX - 23;
+      const right = endX + 39;
+      method.inputRatio = 2 * pulleyCount;
+      method.center = (left + right) / 2;
+      method.columnWidth = Math.max(275, right - left + 12);
+      element('moving-count-label').textContent = `${pulleyCount}個`;
+      movingBank.setAttribute('aria-label', `動滑車 ${pulleyCount}個。個数を変更`);
+      fixedBank.innerHTML = `<rect x="${left}" y="15" width="${endX - left + 20}" height="10" fill="url(#floor)"/>
+        <path d="M${left} 25H${endX + 20}${fixedX.map(x => `M${x} 25V56`).join('')}" fill="none" stroke="#7c8baa" stroke-width="3"/>
+        <circle cx="${startX}" cy="28" r="5" fill="#d3dcee"/>
+        ${fixedX.map(x => sheaveMarkup(x, 56, radius, false)).join('')}`;
+      movingBank.innerHTML = `<rect x="${startX - 5}" y="${265 - radius}" width="${movingX.at(-1) + radius - startX + 10}" height="${2 * radius + 10}" fill="transparent"/>
+        <path d="M${movingX[0]} 270H${movingX.at(-1)}M${centre} 270V302" fill="none" stroke="#a4bbff" stroke-width="4"/>
+        ${movingX.map(x => sheaveMarkup(x, 270, radius, true)).join('')}`;
+      method.pulleys = {
+        startX, endX, centre, radius, movingX, fixedX,
+        movingSheaves: [...movingBank.querySelectorAll('[data-sheave]')],
+        fixedSheaves: [...fixedBank.querySelectorAll('[data-sheave]')]
+      };
+    }
+
+    function showMovingPulley(method) {
+      const { element, pulleys } = method;
+      const { startX, endX, centre, radius, movingX, fixedX, movingSheaves, fixedSheaves } = pulleys;
+      const rise = method.height * pixelsPerMetre;
+      const lowerY = 270 - rise;
+      const pull = rise * method.inputRatio;
+      const tailY = Math.min(350, 80 + pull);
+      const tailContinues = 80 + pull > 350;
+      const rotation = rise * 180 / (radius * Math.PI);
+      let rope = `M${startX} 28`;
+      let support = '';
+      movingX.forEach((x, index) => {
+        rope += `V${lowerY}a${radius} ${radius} 0 0 0 ${2 * radius} 0V56a${radius} ${radius} 0 0 1 ${2 * radius} 0`;
+        support += `M${x - radius} ${index === 0 ? 35 : 56}V${lowerY}M${x + radius} 56V${lowerY}`;
+        movingSheaves[index].setAttribute('transform', `rotate(${-(2 * index + 1) * rotation} ${x} 270)`);
+        fixedSheaves[index].setAttribute('transform', `rotate(${(2 * index + 2) * rotation} ${fixedX[index]} 56)`);
+      });
+      element('moving-wheel-bank').setAttribute('transform', `translate(0 ${-rise})`);
+      element('moving-load').setAttribute('transform', `translate(${centre - 669} ${-rise})`);
+      element('moving-pull').setAttribute('transform', `translate(${endX} ${tailY})`);
+      element('moving-grip').toggleAttribute('hidden', tailContinues);
+      element('moving-rope').setAttribute('d', rope + `V${tailY}`);
+      element('supporting-rope').setAttribute('d', support);
+      const flow = element('moving-flow');
+      flow.toggleAttribute('hidden', !tailContinues);
+      flow.setAttribute('d', `M${endX} 56V${tailY}`);
+      flow.setAttribute('stroke-dashoffset', -pull);
+    }
+
+    function showHeight() {
+      for (const method of selectedMethods) showExperimentHeight(method);
+      showProgress();
+    }
+
+    function showExperimentHeight(method) {
+      const { element } = method;
+      switch (method.type) {
+        case 'direct': {
+          const directRise = method.height * pixelsPerMetre;
+          element('load').setAttribute('transform', `translate(0 ${-directRise})`);
+          element('pull-arrow').setAttribute('transform', `translate(0 ${-directRise})`);
+          break;
+        }
+        case 'fixed': {
+          const fixedRise = method.height * pixelsPerMetre;
+          element('pulley-load').setAttribute('transform', `translate(0 ${-fixedRise})`);
+          element('pulley-pull').setAttribute('transform', `translate(0 ${fixedRise})`);
+          element('pulley-rope').setAttribute('d', `M494 ${302 - fixedRise}V56a24 24 0 0 1 48 0V${105 + fixedRise}`);
+          const rotation = fixedRise * 180 / (24 * Math.PI);
+          element('pulley-spokes').setAttribute('transform', `rotate(${rotation} 518 56)`);
+          break;
+        }
+        case 'moving': showMovingPulley(method); break;
+        case 'slope': {
+          const slopeRise = method.height * pixelsPerMetre;
+          element('slope-load').setAttribute('transform', `translate(${method.startX + slopeRise * method.runPerRise} ${floor - slopeRise})`);
+          break;
+        }
+        case 'lever': showLever(method); break;
+        case 'wheel-axle': showWheelAxle(method); break;
+      }
+    }
+
+    function updateLeverGeometry(method) {
+      const { ratio, reversed, element } = method;
+      const [effortArm, loadArm] = ratio.split(':').map(Number);
+      method.inputRatio = effortArm / loadArm;
+      const left = leverGeometry.pivotX - leverGeometry.loadArm * method.inputRatio - 8;
+      const right = leverGeometry.pivotX + leverGeometry.loadArm + 39;
+      const center = (left + right) / 2;
+      method.center = reversed ? 2 * leverGeometry.pivotX - center : center;
+      method.columnWidth = Math.max(275, right - left + 26);
+      element('lever-ratio-label').textContent = ratio;
+      const effortLabel = element('lever-effort-label');
+      effortLabel.setAttribute('x', reversed ? -13 : 13);
+      effortLabel.setAttribute('text-anchor', reversed ? 'end' : 'start');
+      element('lever-pivot-button').setAttribute('aria-label', `支点。力点側と作用点側の長さの比は ${ratio}。${reversed ? '右' : '左'}を押す向き。比と向きを変更`);
+    }
+
+    function showLever(method) {
+      const { reversed, element } = method;
+      const { pivotX, pivotY, loadArm } = leverGeometry;
+      const loadY = floor - method.height * pixelsPerMetre;
+      const riseFromPivot = loadY - pivotY;
+      const runFromPivot = Math.sqrt(loadArm * loadArm - riseFromPivot * riseFromPivot);
+      const direction = reversed ? -1 : 1;
+      const loadX = pivotX + direction * runFromPivot;
+      const effortX = pivotX - direction * runFromPivot * method.inputRatio;
+      const effortY = pivotY - riseFromPivot * method.inputRatio;
+      element('lever-load').setAttribute('transform', `translate(${loadX} ${loadY})`);
+      element('lever-effort').setAttribute('transform', `translate(${effortX} ${effortY})`);
+      const beam = element('lever-beam');
+      beam.setAttribute('x1', effortX);
+      beam.setAttribute('y1', effortY);
+      beam.setAttribute('x2', loadX);
+      beam.setAttribute('y2', loadY);
+    }
+
+    function updateWheelAxleGeometry(method) {
+      const { ratio, element } = method;
+      const wheelIsOuter = ratio === '2:1';
+      method.rimRadius = wheelIsOuter ? 46 : 23;
+      method.axleRadius = wheelIsOuter ? 23 : 46;
+      method.inputRatio = method.rimRadius / method.axleRadius;
+      element('wheel-axle-outer').classList.toggle('axle-face', !wheelIsOuter);
+      element('wheel-axle-inner').classList.toggle('axle-face', wheelIsOuter);
+      const rimGuideX = 130 - Math.sqrt(method.rimRadius ** 2 - 19 ** 2);
+      const axleGuideX = 130 - Math.sqrt(method.axleRadius ** 2 - 14 ** 2);
+      element('wheel-axle-label-guides').setAttribute('d', `M72 45H${rimGuideX}M72 83H${axleGuideX - 6}L${axleGuideX} 78`);
+      element('wheel-axle-ratio-label').textContent = ratio;
+      element('wheel-axle-button').setAttribute('aria-label', `輪軸。輪と軸の半径の比は ${ratio}。比を変更`);
+    }
+
+    function showWheelAxle(method) {
+      const { element } = method;
+      const { rimRadius, axleRadius } = method;
+      const rise = method.height * pixelsPerMetre;
+      const pull = rise * method.inputRatio;
+      const rotation = rise * 180 / (axleRadius * Math.PI);
+      const effortX = 130 + rimRadius;
+      const loadX = 130 - axleRadius;
+      element('wheel-axle-spokes').setAttribute('transform', `rotate(${rotation} 130 64)`);
+      element('wheel-axle-effort').setAttribute('transform', `translate(${effortX - 176} ${pull})`);
+      element('wheel-axle-load').setAttribute('transform', `translate(${loadX - 107} ${-rise})`);
+      element('wheel-axle-effort-rope').setAttribute('d', `M130 ${64 - rimRadius}A${rimRadius} ${rimRadius} 0 0 1 ${effortX} 64V${80 + pull}`);
+      element('wheel-axle-load-rope').setAttribute('d', `M130 ${64 - axleRadius}A${axleRadius} ${axleRadius} 0 0 0 ${loadX} 64V${302 - rise}`);
+    }
+
+    function showProgress(now = performance.now()) {
+      for (const { grams, height, inputRatio, readings, elapsedMs, manualSince } of selectedMethods) {
+        const work = grams / 100 * height;
+        const manualMs = manualSince === null ? 0 : Math.max(0, now - manualSince);
+        const seconds = (elapsedMs + manualMs) / 1000;
+        readings.height.textContent = formatHeight(height);
+        readings.distance.textContent = formatHeight(height * inputRatio);
+        readings.work.textContent = `${formatNumber.format(work)} J`;
+        readings.time.textContent = `${seconds.toFixed(2)} s`;
+        const power = work === 0 ? '0' : seconds < 0.005 ? '—' : formatNumber.format(work / seconds);
+        readings.power.textContent = `${power} W`;
+      }
+    }
+
+    function drawForce(id, name, magnitude, ux, uy, {
+      x = 230, y = 140, side = ux === 0 && uy > 0 ? 0 : ux < 0 ? -1 : 1,
+      value = formatNumber.format(magnitude)
+    } = {}) {
+      const vector = byId(id);
+      const length = 106 * magnitude / (forceMethod.grams / 100);
+      const endX = x + length * ux;
+      const endY = y + length * uy;
+      const headX = endX - 11 * ux;
+      const headY = endY - 11 * uy;
+      const [shaft, head] = vector.querySelectorAll('path');
+      shaft.setAttribute('d', `M${x} ${y}L${endX} ${endY}`);
+      head.setAttribute('d', `M${headX + 5 * uy} ${headY - 5 * ux}L${endX} ${endY}L${headX - 5 * uy} ${headY + 5 * ux}`);
+      const text = vector.querySelector('text');
+      const [nameLabel, valueLabel] = text.querySelectorAll('tspan');
+      const labelX = endX + 14 * side;
+      text.setAttribute('text-anchor', side === 0 ? 'middle' : side < 0 ? 'end' : 'start');
+      nameLabel.setAttribute('x', labelX);
+      nameLabel.setAttribute('y', endY + (side === 0 ? 20 : -4));
+      nameLabel.textContent = name;
+      valueLabel.setAttribute('x', labelX);
+      valueLabel.textContent = `${value} N`;
+      return `${name} ${valueLabel.textContent}`;
+    }
+
+    function formatSlopeForce(magnitude, radicand) {
+      if (forceNotation.value === 'approximate') return formatNumber.format(magnitude);
+      const coefficient = forceMethod.grams / 200;
+      if (radicand === 1) return formatNumber.format(coefficient);
+      const prefix = coefficient === 1 ? '' : formatNumber.format(coefficient);
+      return `${prefix}√${radicand}`;
+    }
+
+    function drawPulleyBankForces(method, tension) {
+      const y = 84;
+      const radius = 14;
+      const arrowY = y - 106 / method.inputRatio;
+      const centres = Array.from({ length: method.pulleyCount }, (_, index) => 230 + (index - (method.pulleyCount - 1) / 2) * 41);
+      const sheaves = centres.map(x => sheaveMarkup(x, y, radius, true)).join('');
+      const arrows = centres.flatMap(x => [x - radius, x + radius]).map(x =>
+        `M${x} ${y}V${arrowY}m-4 5 4-5 4 5`).join('');
+      const ropes = centres.map(x => `M${x - radius} ${y}a${radius} ${radius} 0 0 0 ${2 * radius} 0`).join('');
+      const label = `ひもの張力　1本あたり ${formatNumber.format(tension)} N`;
+      byId('force-pulley-bank').innerHTML = `<path d="M${centres[0]} ${y}H${centres.at(-1)}M230 ${y}V133" fill="none" stroke="#8297b5" stroke-width="4"/>
+        ${sheaves}<path d="${ropes}" fill="none" stroke="#d3dcee" stroke-width="2"/>
+        <path d="${arrows}" fill="none" stroke="#69e5bc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="230" y="30" text-anchor="middle" fill="#69e5bc" font-size="15" font-weight="700">${label}</text>`;
+      return `${label}、鉛直上向きに ${method.inputRatio} 本`;
+    }
+
+    function renderForceDiagram(method) {
+      const onSlope = method.type === 'slope';
+      const onMovingPulley = method.type === 'moving';
+      const multiplePulleys = onMovingPulley && method.pulleyCount > 1;
+      const showNormal = onSlope && normalToggle.checked;
+      const angle = onSlope ? method.angle : 0;
+      const weight = method.grams / 100;
+      const objectY = onMovingPulley ? 157 : 140;
+      byId('force-title').textContent = onMovingPulley ? '動滑車と物体に働く力' : '引き上げるときに物体に働く力';
+      const detail = onSlope ? ` ${angle}°` : onMovingPulley ? ` ${method.pulleyCount}個` : '';
+      byId('force-method').textContent = `実験 ${method.slot}　${method.name}${detail}`;
+      byId('force-object').setAttribute('transform', `translate(230 ${objectY}) rotate(${-angle})`);
+      byId('force-pulley').toggleAttribute('hidden', !onMovingPulley || multiplePulleys);
+      byId('force-pulley-bank').toggleAttribute('hidden', !multiplePulleys);
+      byId('force-pull').toggleAttribute('hidden', multiplePulleys);
+      byId('force-pull-second').toggleAttribute('hidden', !onMovingPulley || multiplePulleys);
+      byId('force-ramp').toggleAttribute('hidden', !onSlope);
+      byId('force-components').toggleAttribute('hidden', !onSlope);
+      byId('slope-force-options').toggleAttribute('hidden', !onSlope);
+      byId('radical-reference').toggleAttribute('hidden', !onSlope);
+      byId('force-normal').toggleAttribute('hidden', !showNormal);
+      const labels = [drawForce('force-gravity', '重力', weight, 0, 1, { y: objectY }) + '、鉛直下向き'];
+      if (multiplePulleys) {
+        labels.push(drawPulleyBankForces(method, weight / method.inputRatio));
+      } else if (onMovingPulley) {
+        const tension = weight / method.inputRatio;
+        labels.push(
+          '動滑車の左側の' + drawForce('force-pull', 'ひもの張力', tension, 0, -1, { x: 206, y: 77, side: -1 }) + '、鉛直上向き',
+          '動滑車の右側の' + drawForce('force-pull-second', 'ひもの張力', tension, 0, -1, { x: 254, y: 77 }) + '、鉛直上向き'
+        );
+      } else if (onSlope) {
+        const radians = angle * Math.PI / 180;
+        const sine = Math.sin(radians);
+        const cosine = Math.cos(radians);
+        const parallel = weight * sine;
+        const perpendicular = weight * cosine;
+        const [parallelRoot, perpendicularRoot] = { 30: [1, 3], 45: [2, 2], 60: [3, 1] }[angle];
+        const parallelLabel = { value: formatSlopeForce(parallel, parallelRoot) };
+        const perpendicularLabel = { value: formatSlopeForce(perpendicular, perpendicularRoot) };
+        labels.push(
+          drawForce('force-pull', 'ひもが引く力', parallel, cosine, -sine, parallelLabel) + '、斜面に沿って上向き',
+          '重力の' + drawForce('force-parallel', '斜面に沿う分力', parallel, -cosine, sine, parallelLabel) + '、斜面に沿って下向き',
+          '重力の' + drawForce('force-perpendicular', '斜面に垂直な分力', perpendicular, sine, cosine, perpendicularLabel) + '、斜面に向かう向き'
+        );
+        if (showNormal) {
+          labels.push(drawForce('force-normal', '垂直抗力', perpendicular, -sine, -cosine, perpendicularLabel) + '、斜面から離れる向き');
+        }
+      } else {
+        const support = method.type === 'lever' ? 'てこが押す力' :
+          method.type === 'wheel-axle' ? '軸のひもが引く力' : 'ひもが引く力';
+        labels.push(drawForce('force-pull', support, weight, 0, -1) + '、鉛直上向き');
+      }
+      byId('force-diagram').setAttribute('aria-label', labels.join('。'));
+    }
+
+    function openForceDiagram(method) {
+      forceMethod = method;
+      renderForceDiagram(method);
+      forceDialog.showModal();
+    }
+
+    function showPhase(next) {
+      phase = next;
+      byId('phase').textContent = {
+        ready: '準備完了', lifting: '引き上げ中', paused: '一時停止中', manual: '手動操作', done: '目標に到達'
+      }[phase];
+      liftButton.textContent = {
+        ready: '自動で引き上げる', lifting: '一時停止', paused: '自動で続ける', manual: '自動で続ける', done: 'もう一度引き上げる'
+      }[phase];
+    }
+
+    function stopAnimation() {
+      if (frame !== null) cancelAnimationFrame(frame);
+      frame = null;
+    }
+
+    function commitManualTime(now) {
+      for (const method of selectedMethods) {
+        if (method.manualSince === null) continue;
+        method.elapsedMs += Math.max(0, now - method.manualSince);
+        method.manualSince = null;
+      }
+    }
+
+    function animateManualTime(now) {
+      showProgress(now);
+      frame = requestAnimationFrame(animateManualTime);
+    }
+
+    function resetExperiment(method) {
+      method.height = 0;
+      method.elapsedMs = 0;
+      method.manualSince = null;
+    }
+
+    function reset() {
+      stopAnimation();
+      selectedMethods.forEach(resetExperiment);
+      showHeight();
+      showPhase('ready');
+    }
+
+    function updateExperiment(method) {
+      if (method.type === 'moving') updateMovingPulley(method);
+      if (method.type === 'slope') updateSlope(method);
+      if (method.type === 'lever') updateLeverGeometry(method);
+      if (method.type === 'wheel-axle') updateWheelAxleGeometry(method);
+      method.readings.force.textContent = `${formatNumber.format(method.grams / 100 / method.inputRatio)} N`;
+      method.readings.mass.textContent = `${formatNumber.format(method.grams)} g`;
+      method.goalLabel.textContent = `　目標 ${formatHeight(method.targetHeight)}`;
+      method.massLabel.textContent = `　${method.readings.mass.textContent}`;
+    }
+
+    function updateSharedLabels() {
+      const grams = massInput.valueAsNumber;
+      const metres = heightInput.valueAsNumber / 10;
+      byId('mass-value').textContent = `${formatNumber.format(grams)} g`;
+      byId('height-value').textContent = formatHeight(metres);
+      massInput.setAttribute('aria-valuetext', `${grams} グラム`);
+      heightInput.setAttribute('aria-valuetext', `${metres.toFixed(1)} メートル`);
+    }
+
+    function setSharedSetting(field, value) {
+      updateSharedLabels();
+      const affected = selectedMethods.filter(method => (field !== 'angle' || method.type === 'slope') && method[field] !== value);
+      if (!affected.length) return;
+      for (const method of affected) {
+        method[field] = value;
+        updateExperiment(method);
+      }
+      fitDiagram();
+      reset();
+    }
+
+    function updateConditionLabels() {
+      const mass = byId('experiment-mass');
+      const height = byId('experiment-height');
+      byId('experiment-mass-value').textContent = `${formatNumber.format(mass.valueAsNumber)} g`;
+      byId('experiment-height-value').textContent = formatHeight(height.valueAsNumber / 10);
+      mass.setAttribute('aria-valuetext', `${mass.valueAsNumber} グラム`);
+      height.setAttribute('aria-valuetext', `${(height.valueAsNumber / 10).toFixed(1)} メートル`);
+    }
+
+    function openConditions(method) {
+      settingsMethod = method;
+      byId('experiment-settings-title').textContent = `実験 ${method.slot} の条件`;
+      byId('experiment-mass').value = method.grams;
+      byId('experiment-height').value = method.targetHeight * 10;
+      byId('experiment-angle').value = method.angle;
+      byId('experiment-moving-count').value = method.pulleyCount;
+      byId('experiment-lever-ratio').value = method.ratio;
+      byId('experiment-lever-direction').value = method.reversed ? 'right' : 'left';
+      byId('experiment-wheel-ratio').value = method.ratio;
+      for (const field of conditionsDialog.querySelectorAll('[data-condition]')) {
+        field.toggleAttribute('hidden', field.dataset.condition !== method.type);
+      }
+      updateConditionLabels();
+      conditionsDialog.showModal();
+    }
+
+    function phaseForHeights(inProgress) {
+      if (selectedMethods.every(method => method.height === 0)) return 'ready';
+      if (selectedMethods.every(method => method.height === method.targetHeight)) return 'done';
+      return inProgress;
+    }
+
+    function changeConditions(method, changes) {
+      const changed = Object.keys(changes).filter(field => method[field] !== changes[field]);
+      if (!changed.length) return;
+      const needsReset = changed.some(field => field !== 'reversed');
+      if (needsReset) {
+        stopAnimation();
+        commitManualTime(performance.now());
+        resetExperiment(method);
+      }
+      Object.assign(method, changes);
+      updateExperiment(method);
+      fitDiagram();
+      showHeight();
+      if (needsReset) showPhase(phaseForHeights('paused'));
+    }
+
+    function syncMethodInputs() {
+      const count = methodInputs.filter(input => input.value).length;
+      for (const input of methodInputs) input.options[0].disabled = count === 1 && Boolean(input.value);
+    }
+
+    function applyMethodSelection(event) {
+      if (!methodInputs.some(input => input.value)) {
+        event?.preventDefault();
+        return;
+      }
+      const next = methodInputs.map((input, index) => {
+        const previous = slots[index];
+        if (!input.value) return null;
+        return previous?.type === input.value ? previous : createExperiment(input.value, index);
+      });
+      if (next.every((method, index) => method === slots[index])) return;
+      for (const method of selectedMethods) {
+        if (next.includes(method)) continue;
+        method.panels.forEach(panel => panel.remove());
+        method.goalLine.remove();
+        method.goalMarker.remove();
+      }
+      slots = next;
+      selectedMethods = slots.filter(Boolean);
+      const rowCount = selectedMethods.length > 3 ? 2 : 1;
+      const firstRowCount = Math.ceil(selectedMethods.length / rowCount);
+      scene.dataset.rows = String(rowCount);
+      scene.style.setProperty('--row-count', rowCount);
+      rows[0].methods = selectedMethods.slice(0, firstRowCount);
+      rows[1].methods = selectedMethods.slice(firstRowCount);
+      for (const row of rows) {
+        row.container.hidden = row.methods.length === 0;
+        const headings = row.container.querySelector('.methods');
+        const readings = row.container.querySelector('.readings');
+        for (const method of row.methods) {
+          headings.append(method.panels[0]);
+          row.canvas.append(method.diagram);
+          readings.append(method.panels[2]);
+          row.element('experiment-target-lines').append(method.goalLine);
+          row.element('experiment-target-markers').append(method.goalMarker);
+        }
+      }
+      fitDiagram();
+      reset();
+    }
+
+    function lift() {
+      if (phase === 'lifting') {
+        stopAnimation();
+        showPhase('paused');
+        return;
+      }
+      if (phase === 'done') reset();
+      startAutomaticLift();
+    }
+
+    function startAutomaticLift() {
+      stopAnimation();
+      commitManualTime(performance.now());
+      const inputMetresPerMs = autoSpeedInput.valueAsNumber / 10000;
+      const starts = selectedMethods.map(method => {
+        const risePerMs = inputMetresPerMs / method.inputRatio;
+        return {
+          height: method.height,
+          elapsedMs: method.elapsedMs,
+          risePerMs,
+          remainingMs: (method.targetHeight - method.height) / risePerMs
+        };
+      });
+      if (reducedMotion.matches) {
+        selectedMethods.forEach((method, index) => {
+          method.elapsedMs += starts[index].remainingMs;
+          method.height = method.targetHeight;
+        });
+        showHeight();
+        showPhase('done');
+        return;
+      }
+      showPhase('lifting');
+      let startTime;
+      function animate(time) {
+        startTime ??= time;
+        const duration = time - startTime;
+        selectedMethods.forEach((method, index) => {
+          const start = starts[index];
+          method.height = duration >= start.remainingMs ? method.targetHeight : start.height + duration * start.risePerMs;
+          method.elapsedMs = start.elapsedMs + Math.min(duration, start.remainingMs);
+        });
+        showHeight();
+        if (selectedMethods.some(method => method.height < method.targetHeight)) {
+          frame = requestAnimationFrame(animate);
+        } else {
+          frame = null;
+          showPhase('done');
+        }
+      }
+      frame = requestAnimationFrame(animate);
+    }
+
+    function wheelInputDistance(event) {
+      if (event.ctrlKey || event.metaKey) return 0;
+      const mode = event.deltaMode;
+      const deltaPerStep = mode === WheelEvent.DOM_DELTA_LINE ? 3 : mode === WheelEvent.DOM_DELTA_PAGE ? 1 : 100;
+      return event.deltaY / deltaPerStep * wheelDistanceInput.valueAsNumber / 100;
+    }
+
+    function pullWithWheel(event) {
+      const inputDistance = wheelInputDistance(event);
+      if (!inputDistance) return;
+      event.preventDefault();
+      stopAnimation();
+      const now = performance.now();
+      commitManualTime(now);
+      for (const method of selectedMethods) {
+        method.height = clampDistance(method.height + inputDistance / method.inputRatio, method.targetHeight);
+        if (method.height === 0) method.elapsedMs = 0;
+        else if (method.height < method.targetHeight) method.manualSince = now;
+      }
+      showHeight();
+      const nextPhase = phaseForHeights('manual');
+      if (phase !== nextPhase) showPhase(nextPhase);
+      if (nextPhase === 'manual') frame = requestAnimationFrame(animateManualTime);
+    }
+
+    function clampDistance(distance, limit) {
+      const rounded = Math.round(distance * 1e6) / 1e6;
+      return Math.max(0, Math.min(limit, rounded));
+    }
+
+    function showWheelTestPosition() {
+      byId('wheel-test-point').setAttribute('cx', 30 + wheelTestPosition * 100);
+      byId('wheel-test-position').textContent = `${wheelTestPosition.toFixed(2)} m`;
+    }
+
+    function bindDiagramButton(target, action) {
+      target.addEventListener('click', action);
+      target.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        if (!event.repeat) action();
+      });
+    }
+
+    function showChoiceDialog(dialog, ...values) {
+      let selected;
+      for (const button of dialog.querySelectorAll('button')) {
+        const active = values.includes(button.value);
+        button.setAttribute('aria-pressed', String(active));
+        if (active && !selected) selected = button;
+      }
+      dialog.showModal();
+      selected?.focus();
+    }
+
+    for (const option of slopeAngleInput.options) {
+      const button = document.createElement('button');
+      button.type = 'submit';
+      button.value = option.value;
+      button.textContent = option.textContent;
+      byId('slope-angle-choices').append(button);
+    }
+    function bindExperimentButtons(method) {
+      bindDiagramButton(method.diagram.querySelector('.force-target'), () => openForceDiagram(method));
+      if (method.type === 'moving') {
+        bindDiagramButton(method.element('moving-wheel-bank'), () => {
+          settingsMethod = method;
+          showChoiceDialog(movingCountDialog, String(method.pulleyCount));
+        });
+      }
+      if (method.type === 'slope') {
+        bindDiagramButton(method.element('slope-angle-button'), () => {
+          settingsMethod = method;
+          showChoiceDialog(slopeAngleDialog, String(method.angle));
+        });
+      }
+      if (method.type === 'lever') {
+        bindDiagramButton(method.element('lever-pivot-button'), () => {
+          settingsMethod = method;
+          showChoiceDialog(leverRatioDialog, method.ratio, method.reversed ? 'right' : 'left');
+        });
+      }
+      if (method.type === 'wheel-axle') {
+        bindDiagramButton(method.element('wheel-axle-button'), () => {
+          settingsMethod = method;
+          showChoiceDialog(wheelAxleRatioDialog, method.ratio);
+        });
+      }
+    }
+
+    slopeAngleDialog.addEventListener('submit', event => {
+      const angle = event.submitter?.value;
+      if (angle) changeConditions(settingsMethod, { angle: Number(angle) });
+    });
+    movingCountDialog.addEventListener('submit', event => {
+      const count = event.submitter?.value;
+      if (count) changeConditions(settingsMethod, { pulleyCount: Number(count) });
+    });
+    leverRatioDialog.addEventListener('submit', event => {
+      const choice = event.submitter;
+      if (!choice) return;
+      const changes = choice.name === 'direction' ? { reversed: choice.value === 'right' } : { ratio: choice.value };
+      changeConditions(settingsMethod, changes);
+    });
+    wheelAxleRatioDialog.addEventListener('submit', event => {
+      const ratio = event.submitter?.value;
+      if (ratio) changeConditions(settingsMethod, { ratio });
+    });
+    byId('experiment-mass').addEventListener('input', updateConditionLabels);
+    byId('experiment-height').addEventListener('input', updateConditionLabels);
+    conditionsDialog.addEventListener('submit', () => {
+      const changes = {
+        grams: byId('experiment-mass').valueAsNumber,
+        targetHeight: byId('experiment-height').valueAsNumber / 10
+      };
+      if (settingsMethod.type === 'slope') changes.angle = Number(byId('experiment-angle').value);
+      if (settingsMethod.type === 'moving') changes.pulleyCount = Number(byId('experiment-moving-count').value);
+      if (settingsMethod.type === 'lever') {
+        changes.ratio = byId('experiment-lever-ratio').value;
+        changes.reversed = byId('experiment-lever-direction').value === 'right';
+      }
+      if (settingsMethod.type === 'wheel-axle') changes.ratio = byId('experiment-wheel-ratio').value;
+      changeConditions(settingsMethod, changes);
+    });
+
+    normalToggle.addEventListener('change', () => renderForceDiagram(forceMethod));
+    forceNotation.addEventListener('change', () => renderForceDiagram(forceMethod));
+    const diagramObserver = new ResizeObserver(fitDiagram);
+    for (const row of rows) {
+      row.canvas.addEventListener('wheel', pullWithWheel, { passive: false });
+      diagramObserver.observe(row.canvas);
+      for (const tick of row.ticks) {
+        bindDiagramButton(tick, () => {
+          const tenths = Number(tick.dataset.height) * 10;
+          heightInput.value = tenths;
+          setSharedSetting('targetHeight', tenths / 10);
+        });
+      }
+    }
+    byId('open-methods').addEventListener('click', () => {
+      methodInputs.forEach((input, index) => input.value = slots[index]?.type ?? '');
+      syncMethodInputs();
+      methodsDialog.showModal();
+    });
+    byId('method-selection').addEventListener('change', syncMethodInputs);
+    byId('method-selection').addEventListener('submit', applyMethodSelection);
+    byId('open-settings').addEventListener('click', () => byId('settings-dialog').showModal());
+    byId('open-wheel-test').addEventListener('click', () => {
+      wheelTestPosition = 0;
+      showWheelTestPosition();
+      wheelTestDialog.showModal();
+    });
+    wheelTestDialog.addEventListener('wheel', event => {
+      const distance = wheelInputDistance(event);
+      if (!distance) return;
+      event.preventDefault();
+      wheelTestPosition = clampDistance(wheelTestPosition + distance, 3);
+      showWheelTestPosition();
+    }, { passive: false });
+    massInput.addEventListener('input', () => setSharedSetting('grams', massInput.valueAsNumber));
+    heightInput.addEventListener('input', () => setSharedSetting('targetHeight', heightInput.valueAsNumber / 10));
+    wheelDistanceInput.addEventListener('input', () => {
+      const metres = (wheelDistanceInput.valueAsNumber / 100).toFixed(2);
+      byId('wheel-distance-value').textContent = `${metres} m`;
+      wheelDistanceInput.setAttribute('aria-valuetext', `${metres} メートル`);
+    });
+    autoSpeedInput.addEventListener('input', () => {
+      const metres = (autoSpeedInput.valueAsNumber / 10).toFixed(1);
+      byId('auto-speed-value').textContent = `${metres} m`;
+      autoSpeedInput.setAttribute('aria-valuetext', `1秒に${metres} メートル`);
+      if (phase === 'lifting') startAutomaticLift();
+    });
+    slopeAngleInput.addEventListener('change', () => setSharedSetting('angle', Number(slopeAngleInput.value)));
+    liftButton.addEventListener('click', lift);
+    resetButton.addEventListener('click', reset);
+    fullscreenButton.addEventListener('click', async () => {
+      byId('fullscreen-status').textContent = '';
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen();
+      } catch {
+        byId('fullscreen-status').textContent = '全画面表示に切り替えられませんでした。';
+      }
+    });
+    document.addEventListener('fullscreenchange', () => {
+      const active = Boolean(document.fullscreenElement);
+      fullscreenButton.setAttribute('aria-pressed', String(active));
+      byId('fullscreen-label').textContent = active ? '全画面を終了' : '全画面表示';
+    });
+    updateSharedLabels();
+    applyMethodSelection();
+  </script>
+</body>
+</html>
