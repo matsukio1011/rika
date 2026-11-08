@@ -1,0 +1,4364 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>斜面上の運動と自由落下・記録タイマー｜理科ラボ</title>
+  <style>
+    :root {
+      --bg-main: #090d16;
+      --bg-panel: #111827;
+      --bg-card: #1e293b;
+      --bg-control: #0f172a;
+      --border: #334155;
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --primary: #3b82f6;
+      --primary-glow: rgba(59, 130, 246, 0.35);
+      --accent-orange: #f97316;
+      --accent-purple: #a855f7;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg-main);
+      color: var(--text-main);
+      font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===== Top Control Bar (Fixed Height, No Scroll) ===== */
+    .topbar {
+      height: 64px;
+      min-height: 64px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      z-index: 20;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .brand-title {
+      font-size: 0.9rem;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .controls-center {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      justify-content: center;
+      flex-wrap: wrap;
+      padding: 4px 0;
+    }
+
+    .control-pill {
+      background: var(--bg-control);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 5px 8px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      height: 44px;
+    }
+
+    .preset-btn {
+      padding: 6px 8px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: #1e293b;
+      color: var(--text-sub);
+      font-size: 0.76rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .preset-btn:hover {
+      color: #fff;
+      border-color: #64748b;
+    }
+
+    .preset-btn.active-1 {
+      background: rgba(59, 130, 246, 0.22);
+      border-color: #3b82f6;
+      color: #60a5fa;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.25);
+    }
+
+    .preset-btn.active-2 {
+      background: rgba(249, 115, 22, 0.22);
+      border-color: #f97316;
+      color: #fb923c;
+      box-shadow: 0 0 10px rgba(249, 115, 22, 0.25);
+    }
+
+    .preset-btn.active-3 {
+      background: rgba(168, 85, 247, 0.24);
+      border-color: #a855f7;
+      color: #d8b4fe;
+      box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+    }
+
+    .hz-btn {
+      padding: 5px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #1e293b;
+      color: var(--text-sub);
+      font-size: 0.75rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .hz-btn:hover {
+      color: #fff;
+    }
+
+    .hz-btn.active-hz {
+      background: rgba(16, 185, 129, 0.22);
+      border-color: #10b981;
+      color: #34d399;
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.25);
+    }
+
+    .slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: opacity 0.2s;
+    }
+
+    .slider-wrap.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    .slider-label {
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      white-space: nowrap;
+    }
+
+    .slider-val {
+      font-family: Consolas, monospace;
+      font-size: 0.82rem;
+      font-weight: 800;
+      color: #38bdf8;
+      min-width: 48px;
+      text-align: right;
+    }
+
+    .unit-toggle {
+      display: none;
+      align-items: center;
+      background: #090d16;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 1px;
+      margin-left: 2px;
+    }
+
+    .unit-btn {
+      background: transparent;
+      color: var(--text-sub);
+      border: none;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .unit-btn:hover {
+      color: #fff;
+    }
+
+    .unit-btn.active {
+      background: #f97316;
+      color: #fff;
+    }
+
+    input[type="range"] {
+      width: 62px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .speed-select {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 5px 4px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn {
+      height: 42px;
+      padding: 0 10px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: #1e293b;
+      color: var(--text-main);
+      font-weight: 700;
+      font-size: 0.78rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn:hover:not(:disabled) {
+      background: #334155;
+      border-color: #64748b;
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-start {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      border-color: #3b82f6;
+      color: #fff;
+      box-shadow: 0 0 14px var(--primary-glow);
+      padding: 0 13px;
+      font-size: 0.83rem;
+    }
+
+    .btn-start:hover:not(:disabled) {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+    }
+
+    .btn-start.playing {
+      background: linear-gradient(135deg, #d97706, #b45309);
+      border-color: #f59e0b;
+      box-shadow: 0 0 14px rgba(245, 158, 11, 0.35);
+    }
+
+    .btn-record {
+      background: rgba(234, 179, 8, 0.16);
+      border-color: rgba(234, 179, 8, 0.6);
+      color: #fde047;
+    }
+
+    .btn-record:hover:not(:disabled) {
+      background: rgba(234, 179, 8, 0.28);
+      border-color: #facc15;
+    }
+
+    .btn-reset {
+      color: #fca5a5;
+      border-color: rgba(239, 68, 68, 0.4);
+      background: rgba(239, 68, 68, 0.12);
+    }
+
+    .btn-reset:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.25);
+    }
+
+    .btn-chart {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.5);
+      color: #34d399;
+    }
+
+    .btn-chart.active {
+      background: #059669;
+      color: #fff;
+    }
+
+    .btn-fullscreen {
+      background: #0f172a;
+      border-color: #475569;
+      color: #e2e8f0;
+      padding: 0 9px;
+    }
+
+    /* ===== Main Workspace (Fills Remaining 100vh Height, No Scroll) ===== */
+    .workspace {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 12px 16px;
+      gap: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .sim-stage {
+      flex: 1;
+      min-height: 0;
+      background: radial-gradient(circle at 50% 35%, #131c31 0%, #090d16 100%);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+    }
+
+    #simCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Floating HUD Overlay */
+    .hud-top-left {
+      position: absolute;
+      top: 12px;
+      left: 14px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      pointer-events: none;
+    }
+
+    .hud-card {
+      background: rgba(15, 23, 42, 0.84);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 10px;
+      padding: 6px 11px;
+      min-width: 102px;
+    }
+
+    .hud-label {
+      font-size: 0.69rem;
+      color: var(--text-sub);
+      font-weight: 700;
+    }
+
+    .hud-val {
+      font-family: Consolas, monospace;
+      font-size: 1.04rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-top: 1px;
+    }
+
+    /* Saved Records Bar on Sim Stage (Bottom-Left Floating) */
+    .saved-records-bar {
+      position: absolute;
+      bottom: 12px;
+      left: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      z-index: 10;
+    }
+
+    .record-chip {
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(8px);
+      border: 1.5px solid #38bdf8;
+      border-radius: 999px;
+      padding: 4px 10px 4px 12px;
+      font-size: 0.77rem;
+      font-weight: 700;
+      color: #f8fafc;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+    }
+
+    .record-chip button {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.5);
+      color: #fca5a5;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      font-size: 0.7rem;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .record-chip button:hover {
+      background: #ef4444;
+      color: #fff;
+    }
+
+    .hud-top-right {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      display: flex;
+      gap: 12px;
+      background: rgba(15, 23, 42, 0.84);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #cbd5e1;
+    }
+
+    .hud-top-right label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    /* ===== Energy Graph Floating Panel (Draggable & Resizable) ===== */
+    .energy-panel {
+      position: absolute;
+      top: 66px;
+      left: 14px;
+      width: 420px;
+      height: 270px;
+      min-width: 280px;
+      min-height: 175px;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(10px);
+      border: 1.5px solid rgba(56, 189, 248, 0.45);
+      border-radius: 12px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 20;
+      user-select: none;
+    }
+
+    .energy-panel.dragging,
+    .energy-panel.resizing {
+      border-color: #38bdf8;
+      box-shadow: 0 16px 40px rgba(2, 132, 199, 0.35);
+    }
+
+    .energy-panel.hidden {
+      display: none;
+    }
+
+    .energy-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      background: rgba(2, 6, 23, 0.78);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+      gap: 6px;
+      flex-shrink: 0;
+      cursor: grab;
+    }
+
+    .energy-panel-header:active {
+      cursor: grabbing;
+    }
+
+    .energy-panel-title {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .energy-drag-hint {
+      font-size: 0.66rem;
+      font-weight: 600;
+      color: #64748b;
+      margin-left: 2px;
+    }
+
+    /* 8-direction Resize Handles */
+    .energy-resizer {
+      position: absolute;
+      z-index: 25;
+    }
+    .energy-resizer.r-n  { top: 0; left: 10px; right: 10px; height: 6px; cursor: ns-resize; }
+    .energy-resizer.r-s  { bottom: 0; left: 10px; right: 10px; height: 6px; cursor: ns-resize; }
+    .energy-resizer.r-e  { right: 0; top: 10px; bottom: 10px; width: 6px; cursor: ew-resize; }
+    .energy-resizer.r-w  { left: 0; top: 10px; bottom: 10px; width: 6px; cursor: ew-resize; }
+    .energy-resizer.r-ne { top: 0; right: 0; width: 12px; height: 12px; cursor: nesw-resize; }
+    .energy-resizer.r-nw { top: 0; left: 0; width: 12px; height: 12px; cursor: nwse-resize; }
+    .energy-resizer.r-sw { bottom: 0; left: 0; width: 12px; height: 12px; cursor: nesw-resize; }
+    .energy-resizer.r-se {
+      bottom: 0;
+      right: 0;
+      width: 18px;
+      height: 18px;
+      cursor: nwse-resize;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      padding: 2px 3px;
+      color: #38bdf8;
+      font-size: 11px;
+      line-height: 1;
+      opacity: 0.85;
+    }
+    .energy-resizer.r-se:hover {
+      opacity: 1;
+      color: #7dd3fc;
+    }
+
+    .energy-axis-toggle {
+      display: inline-flex;
+      background: #090d16;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 1px;
+      gap: 2px;
+    }
+
+    .energy-axis-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .energy-axis-btn.active {
+      background: #0284c7;
+      color: #ffffff;
+    }
+
+    .energy-close-btn {
+      background: rgba(239, 68, 68, 0.16);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .energy-close-btn:hover {
+      background: #ef4444;
+      color: #ffffff;
+    }
+
+    .energy-series-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 10px;
+      background: rgba(15, 23, 42, 0.6);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+      font-size: 0.71rem;
+      font-weight: 700;
+      color: #cbd5e1;
+      flex-shrink: 0;
+    }
+
+    .energy-series-bar label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .energy-canvas-wrap {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      width: 100%;
+    }
+
+    #energyCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Toast notification */
+    .toast-msg {
+      position: absolute;
+      top: 68px;
+      right: 14px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid #facc15;
+      color: #fde047;
+      padding: 8px 14px;
+      border-radius: 9px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(-6px);
+      transition: all 0.2s ease;
+      z-index: 25;
+    }
+
+    .toast-msg.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ===== Force Popup Modal (Triggered when clicking a Strobe Ghost) ===== */
+    .force-popup-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(9, 13, 22, 0.65);
+      backdrop-filter: blur(4px);
+      z-index: 40;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .force-popup-backdrop.open {
+      display: flex;
+    }
+
+    .force-popup-card {
+      width: min(920px, 94vw);
+      height: min(640px, 84vh);
+      background: #0f172a;
+      border: 1.5px solid #38bdf8;
+      border-radius: 16px;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.7);
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .force-popup-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .force-popup-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .force-canvas-wrap {
+      flex: 1;
+      min-height: 0;
+      background: radial-gradient(circle at 50% 50%, #16213a 0%, #090d16 100%);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #forcePopupCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Lower Stage: Real-time Ticker Tape Display */
+    .tape-stage {
+      height: 210px;
+      min-height: 210px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .tape-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.83rem;
+      font-weight: 700;
+      color: #cbd5e1;
+    }
+
+    .tape-legend {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.77rem;
+      color: var(--text-sub);
+    }
+
+    .legend-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+
+    .tape-canvas-wrap {
+      flex: 1;
+      min-height: 0;
+      background: #090d16;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #tapeCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Modal Drawer for Cut Tape Graph */
+    .chart-modal {
+      position: absolute;
+      inset: 12px 16px;
+      background: rgba(15, 23, 42, 0.97);
+      backdrop-filter: blur(12px);
+      border: 1px solid #475569;
+      border-radius: 14px;
+      z-index: 30;
+      display: none;
+      flex-direction: column;
+      padding: 16px 22px;
+    }
+
+    .chart-modal.open {
+      display: flex;
+    }
+
+    .chart-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .modal-tab-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .modal-tab {
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #1e293b;
+      color: #94a3b8;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .modal-tab.active {
+      background: rgba(59, 130, 246, 0.25);
+      border-color: #3b82f6;
+      color: #fff;
+    }
+
+    .chart-modal-body {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 18px;
+    }
+
+    .chart-box {
+      background: #090d16;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #chartCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .data-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #090d16;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.77rem;
+      text-align: center;
+    }
+
+    .data-table th, .data-table td {
+      padding: 6px 5px;
+      border-bottom: 1px solid #1e293b;
+      border-right: 1px solid #1e293b;
+      white-space: nowrap;
+    }
+
+    .data-table th {
+      background: #1e293b;
+      color: #cbd5e1;
+      font-weight: 700;
+    }
+
+    .data-table td {
+      font-family: Consolas, monospace;
+      color: #f8fafc;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="brand" style="display:flex; align-items:center; gap:8px;">
+      <a href="./index.html" style="display:inline-flex; align-items:center; gap:4px; padding:4px 9px; font-size:0.75rem; font-weight:700; color:#38bdf8; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); border-radius:8px; text-decoration:none; transition:all 0.15s;" title="理科ラボのポータルへ戻る">← 理科ラボ</a>
+      <div class="brand-title">
+        <span>🛷 斜面と自由落下</span>
+      </div>
+    </div>
+
+    <div class="controls-center">
+      <!-- 実験モード切替 -->
+      <div class="control-pill">
+        <button class="preset-btn active-1" id="btnExp1" onclick="setExperiment(1)">🛷 実験1：斜面</button>
+        <button class="preset-btn" id="btnExp2" onclick="setExperiment(2)">⬇️ 実験2：自由落下</button>
+        <button class="preset-btn" id="btnExp3" onclick="setExperiment(3)">⚖️ 並べて表示</button>
+      </div>
+
+      <!-- 記録タイマー 50Hz / 60Hz 切替 -->
+      <div class="control-pill" title="50Hz(東日本)は5打点ごと(0.1秒)、60Hz(西日本)は6打点ごと(0.1秒)にテープを区切ります">
+        <span class="slider-label">タイマー:</span>
+        <button class="hz-btn" id="btnHz50" onclick="setTimerHz(50)">50Hz (東日本)</button>
+        <button class="hz-btn active-hz" id="btnHz60" onclick="setTimerHz(60)">60Hz (西日本)</button>
+      </div>
+
+      <!-- A点の高さ & 斜面の角度 & 水平面・摩擦係数 -->
+      <div class="control-pill">
+        <div class="slider-wrap">
+          <span class="slider-label">高さ(h):</span>
+          <input type="range" id="heightSlider" min="20" max="200" step="5" value="60" oninput="onHeightInput()" />
+          <span class="slider-val" id="heightVal" style="color:#fbbf24;">60 cm</span>
+          <div class="unit-toggle" id="heightUnitToggle" title="自由落下のときは高さの単位を cm / m に切り替えられます">
+            <button class="unit-btn active" id="btnUnitCm" onclick="setHeightUnit('cm')">cm</button>
+            <button class="unit-btn" id="btnUnitM" onclick="setHeightUnit('m')">m</button>
+          </div>
+        </div>
+        <div style="width:1px; height:24px; background:#334155;"></div>
+        <div class="slider-wrap" id="angleSliderWrap">
+          <span class="slider-label">角度(θ):</span>
+          <input type="range" id="angleSlider" min="10" max="60" step="1" value="20" oninput="onAngleInput()" />
+          <span class="slider-val" id="angleVal" style="min-width:32px;">20°</span>
+        </div>
+        <div id="flatControlsGroup" style="display:flex; align-items:center; gap:5px;">
+          <div style="width:1px; height:24px; background:#334155;"></div>
+          <div class="slider-wrap" title="斜面の下に続く水平面全体の長さを設定します（0〜300cm）">
+            <span class="slider-label">水平面:</span>
+            <input type="range" id="flatLenSlider" min="0" max="300" step="10" value="160" oninput="onFlatLenInput()" />
+            <span class="slider-val" id="flatLenVal" style="color:#34d399; min-width:46px;">160 cm</span>
+          </div>
+          <div style="width:1px; height:24px; background:#334155;"></div>
+          <div class="slider-wrap" title="水平面・前半（斜面下端B〜切替位置C）の動摩擦係数 μ₁（0.00＝摩擦なし）">
+            <span class="slider-label">前半μ₁:</span>
+            <input type="range" id="friction1Slider" min="0" max="0.50" step="0.02" value="0.00" oninput="onFriction1Input()" />
+            <span class="slider-val" id="friction1Val" style="color:#38bdf8; min-width:32px;">0.00</span>
+          </div>
+          <div style="width:1px; height:24px; background:#334155;"></div>
+          <div class="slider-wrap" title="斜面の下端(B点)から何cmの位置(C点)で摩擦係数を μ₁ → μ₂ に切り替えるか設定します">
+            <span class="slider-label">切替位置:</span>
+            <input type="range" id="flatChangeSlider" min="0" max="160" step="10" value="60" oninput="onFlatChangeInput()" />
+            <span class="slider-val" id="flatChangeVal" style="color:#fbbf24; min-width:44px;">60 cm</span>
+          </div>
+          <div style="width:1px; height:24px; background:#334155;"></div>
+          <div class="slider-wrap" title="水平面・後半（切替位置C〜終端）の動摩擦係数 μ₂">
+            <span class="slider-label">後半μ₂:</span>
+            <input type="range" id="friction2Slider" min="0" max="0.50" step="0.02" value="0.20" oninput="onFriction2Input()" />
+            <span class="slider-val" id="friction2Val" style="color:#f472b6; min-width:32px;">0.20</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 再生速度 -->
+      <div class="control-pill">
+        <span class="slider-label">速度:</span>
+        <select class="speed-select" id="speedSelect" onchange="onSpeedChange()">
+          <option value="0.15">0.15x</option>
+          <option value="0.35" selected>0.35x</option>
+          <option value="0.6">0.6x</option>
+          <option value="1.0">1.0x</option>
+        </select>
+      </div>
+
+      <!-- 操作ボタン -->
+      <button class="btn btn-start" id="btnStart" onclick="togglePlay()">▶ スタート</button>
+      <button class="btn" id="btnStep" onclick="stepOneDot()" title="1打点分だけ進めます">⏭ 1打点</button>
+      <button class="btn btn-record" id="btnRecordExp1" onclick="saveExp1Record()" title="現在の実験1（斜面）の結果を記録します（最大3個）">
+        📌 結果を記録 (0/3)
+      </button>
+      <button class="btn btn-reset" onclick="resetSim()">↺ リセット</button>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:6px;">
+      <button class="btn btn-chart" id="btnToggleChart" onclick="toggleChartModal()">
+        📊 台紙グラフ
+      </button>
+      <button class="btn btn-fullscreen" id="btnFullscreen" onclick="toggleFullscreen()" title="全画面表示の切り替え">
+        ⛶ 全画面
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="workspace">
+    <!-- Upper Stage: シミュレーション -->
+    <section class="sim-stage" id="simStage">
+      <canvas id="simCanvas"></canvas>
+
+      <!-- リアルタイム計測 HUD -->
+      <div class="hud-top-left" id="hudContainer"></div>
+
+      <!-- 記録された実験1の結果チップ表示（最大3個） -->
+      <div class="saved-records-bar" id="savedRecordsBar"></div>
+
+      <!-- トースト通知 -->
+      <div class="toast-msg" id="toastMsg"></div>
+
+      <!-- 表示オプション -->
+      <div class="hud-top-right">
+        <label><input type="checkbox" id="chkEnergy" checked onchange="toggleEnergyGraph(this.checked)" /> ⚡ 位置・運動エネルギーのグラフ</label>
+        <label><input type="checkbox" id="chkForces" checked onchange="render()" /> はたらく力</label>
+        <label><input type="checkbox" id="chkStrobe" checked onchange="render()" /> 0.1秒ごとの残像 <span style="color:#38bdf8; font-size:0.74rem;">(クリックで力の図)</span></label>
+        <span style="color:#fbbf24; font-size:0.74rem; border-left:1px solid #334155; padding-left:10px;" title="一時停止中（停止中）にマウスホイール下回転で時間を進め、上回転で時間を戻せます（Shift+ホイールで0.1秒単位）">
+          🖱️ 停止中ホイール：下＝進める / 上＝戻す
+        </span>
+      </div>
+
+      <!-- 位置エネルギー・運動エネルギー リアルタイムグラフパネル（移動・拡大縮小・表示/非表示選択可能） -->
+      <div class="energy-panel" id="energyPanel">
+        <!-- 8方向リサイズハンドル -->
+        <div class="energy-resizer r-n" data-dir="n"></div>
+        <div class="energy-resizer r-s" data-dir="s"></div>
+        <div class="energy-resizer r-e" data-dir="e"></div>
+        <div class="energy-resizer r-w" data-dir="w"></div>
+        <div class="energy-resizer r-ne" data-dir="ne"></div>
+        <div class="energy-resizer r-nw" data-dir="nw"></div>
+        <div class="energy-resizer r-sw" data-dir="sw"></div>
+        <div class="energy-resizer r-se" data-dir="se" title="ドラッグして拡大・縮小">◢</div>
+
+        <div class="energy-panel-header" id="energyPanelHeader" title="ドラッグして移動">
+          <div class="energy-panel-title">
+            <span>⠿ ⚡ 位置・運動エネルギー</span>
+            <span class="energy-drag-hint">(移動・端ドラッグで拡縮)</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:5px;" onmousedown="event.stopPropagation()">
+            <div class="energy-axis-toggle" title="折れ線グラフの横軸を「移動距離」または「時間」に切り替え">
+              <button class="energy-axis-btn active" id="btnEnergyAxisDist" onclick="setEnergyAxis('dist')">横軸:距離</button>
+              <button class="energy-axis-btn" id="btnEnergyAxisTime" onclick="setEnergyAxis('time')">横軸:時間</button>
+            </div>
+            <button class="energy-close-btn" onclick="toggleEnergyGraph(false)" title="エネルギーグラフを非表示にする">✕ 非表示</button>
+          </div>
+        </div>
+        <div class="energy-series-bar">
+          <label style="color:#38bdf8;"><input type="checkbox" id="chkEp" checked onchange="render()" /> 位置エネルギー(Ep)</label>
+          <label style="color:#34d399;"><input type="checkbox" id="chkEk" checked onchange="render()" /> 運動エネルギー(Ek)</label>
+          <label style="color:#fbbf24;"><input type="checkbox" id="chkEm" checked onchange="render()" /> 力学的(Ep+Ek)</label>
+        </div>
+        <div class="energy-canvas-wrap" id="energyCanvasWrap">
+          <canvas id="energyCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- 残像クリック時の「台車にはたらく力の図」ポップアップ（説明なし・大画面図解） -->
+      <div class="force-popup-backdrop" id="forcePopupBackdrop" onclick="onBackdropClick(event)">
+        <div class="force-popup-card">
+          <div class="force-popup-header">
+            <div class="force-popup-title" id="forcePopupTitle">
+              🔍 残像① のときに台車にはたらく力の図
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <button class="btn" style="height:34px; font-size:0.8rem;" onclick="stepPopupGhost(-1)">◀ 前の残像 (-0.1s)</button>
+              <button class="btn" style="height:34px; font-size:0.8rem;" onclick="stepPopupGhost(1)">次の残像 (+0.1s) ▶</button>
+              <button class="btn btn-reset" style="height:34px; font-size:0.8rem;" onclick="closeForcePopup()">✕ 閉じる</button>
+            </div>
+          </div>
+
+          <div class="force-canvas-wrap">
+            <canvas id="forcePopupCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Lower Stage: リアルタイムで打点される記録テープ -->
+    <section class="tape-stage">
+      <div class="tape-header">
+        <div id="tapeHeaderTitle"></div>
+        <div class="tape-legend" id="tapeLegend"></div>
+      </div>
+      <div class="tape-canvas-wrap" id="tapeStage">
+        <canvas id="tapeCanvas"></canvas>
+      </div>
+    </section>
+
+    <!-- 台紙グラフ オーバーレイ -->
+    <div class="chart-modal" id="chartModal">
+      <div class="chart-modal-header">
+        <div class="modal-tab-group">
+          <h2 style="font-size:1.05rem; font-weight:800; margin-right:6px;">📊 台紙グラフ比較</h2>
+          <button class="modal-tab active" id="tabSavedExp1" onclick="setChartTab('saved')">
+            📌 記録した実験1の結果を比較 (<span id="lblSavedCount">0</span>/3)
+          </button>
+          <button class="modal-tab" id="tabSlopeVsFree" onclick="setChartTab('slope_free')">
+            ⚖️ 斜面と自由落下を比較
+          </button>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button class="btn btn-record" onclick="saveExp1Record()">📌 現在の実験1を記録</button>
+          <button class="btn btn-reset" onclick="clearAllRecords()" id="btnClearRecords" style="display:none;">🗑 記録を全消去</button>
+          <button class="btn" onclick="toggleChartModal()">✕ 実験画面に戻る</button>
+        </div>
+      </div>
+      <div class="chart-modal-body">
+        <div class="chart-box" id="chartStage">
+          <canvas id="chartCanvas"></canvas>
+        </div>
+        <div class="data-panel">
+          <div>
+            <h3 style="font-size:0.93rem; color:#38bdf8; margin-bottom:8px;" id="modalTableTitle">📋 0.1秒ごとの測定データ</h3>
+            <div class="table-scroll">
+              <table class="data-table" id="modalTable"></table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // =========================================================
+    // 物理モデルと状態管理
+    // =========================================================
+    const G_CM = 980.0; // 重力加速度 [cm/s^2]
+    const RECORD_COLORS = ['#38bdf8', '#34d399', '#f472b6'];
+    const CIRCLED_NUMS = [
+      '0', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩',
+      '⑪', '⑫', '⑬', '⑭', '⑮', '⑯', '⑰', '⑱', '⑲', '⑳',
+      '㉑', '㉒', '㉓', '㉔', '㉕', '㉖', '㉗', '㉘', '㉙', '㉚',
+      '㉛', '㉜', '㉝', '㉞', '㉟', '㊱', '㊲', '㊳', '㊴', '㊵',
+      '㊶', '㊷', '㊸', '㊹', '㊺', '㊻', '㊼', '㊽', '㊾', '㊿'
+    ];
+
+    const state = {
+      expMode: 1,           // 1 = 実験1(斜面＋水平面), 2 = 実験2(自由落下), 3 = 並べて表示
+      timerHz: 60,          // 50 | 60
+      heightCm: 60.0,       // A点の高さ h [cm]
+      heightUnit: 'cm',     // 'cm' | 'm'（実験2：自由落下単体のときのみ 'm' 選択可能）
+      angleDeg: 20.0,       // 斜面角度 θ [°]
+      flatLenCm: 160.0,     // 実験1：斜面の下に続く水平面全体の長さ [cm]
+      flatChangeCm: 60.0,   // 実験1：斜面下端(B点)から摩擦係数が切り替わる位置(C点)までの距離 [cm]
+      frictionMu1: 0.00,    // 実験1：水平面・前半(B〜C)の動摩擦係数 μ₁ [0.00〜0.50]
+      frictionMu2: 0.20,    // 実験1：水平面・後半(C〜終端)の動摩擦係数 μ₂ [0.00〜0.50]
+      speedMultiplier: 0.35,
+      playing: false,
+      currentDot: 0,
+      lastTime: 0,
+      chartOpen: false,
+      chartTab: 'saved',
+      savedRecords: [],     // 最大3個まで保存される実験1の結果
+      hoveredGhost: null,   // マウスホバー中の残像
+      popupGhost: null,     // ポップアップ表示中の残像 { modeType, stripIndex, maxStripIndex }
+      showEnergyGraph: true,// 位置・運動エネルギーグラフの表示/非表示
+      energyAxis: 'dist'    // 'dist' (移動距離) | 'time' (経過時間)
+    };
+
+    function isFreeMeterMode() {
+      return state.expMode === 2 && state.heightUnit === 'm';
+    }
+
+    function formatHeight(heightCm, forceUnit = null) {
+      const unit = forceUnit || (isFreeMeterMode() ? 'm' : 'cm');
+      if (unit === 'm') {
+        const m = heightCm / 100;
+        return `${Number.isInteger(m) ? m.toFixed(1) : m.toFixed(1)} m`;
+      }
+      return `${heightCm.toFixed(0)} cm`;
+    }
+
+    // キャンバス上の残像クリック判定用リスト
+    let ghostHitBoxes = [];
+
+    const simCanvas = document.getElementById('simCanvas');
+    const simCtx = simCanvas.getContext('2d');
+    const tapeCanvas = document.getElementById('tapeCanvas');
+    const tapeCtx = tapeCanvas.getContext('2d');
+    const chartCanvas = document.getElementById('chartCanvas');
+    const chartCtx = chartCanvas.getContext('2d');
+    const forcePopupCanvas = document.getElementById('forcePopupCanvas');
+    const forcePopupCtx = forcePopupCanvas.getContext('2d');
+    const energyCanvas = document.getElementById('energyCanvas');
+    const energyCtx = energyCanvas.getContext('2d');
+
+    function getSinglePhysics(
+      modeType,
+      heightCm = state.heightCm,
+      angleDeg = state.angleDeg,
+      timerHz = state.timerHz,
+      flatLenCm = (modeType === 1 && state.expMode === 1) ? state.flatLenCm : 0,
+      frictionMu1 = (modeType === 1 && state.expMode === 1) ? state.frictionMu1 : 0,
+      flatChangeCm = (modeType === 1 && state.expMode === 1) ? state.flatChangeCm : 0,
+      frictionMu2 = (modeType === 1 && state.expMode === 1) ? state.frictionMu2 : 0
+    ) {
+      const effAngle = modeType === 2 ? 90.0 : angleDeg;
+      const rad = (effAngle * Math.PI) / 180;
+      const sinT = modeType === 2 ? 1.0 : Math.sin(rad);
+      const cosT = modeType === 2 ? 0.0 : Math.cos(rad);
+
+      const dt = 1 / timerHz;
+      const dotsPerStrip = timerHz / 10;
+
+      const a = G_CM * sinT; // 斜面上の加速度 [cm/s^2]
+      const dL = +(a * 0.01).toFixed(2); // 斜面上での0.1秒ごとの距離増加 [cm]
+      const slopeDistCm = heightCm / sinT; // 斜面の長さ [cm]
+      const horizBaseCm = modeType === 2 ? 0 : heightCm / Math.tan(rad);
+
+      const slopeTime = Math.sqrt((2 * slopeDistCm) / a);
+      const bottomSpeed = a * slopeTime; // 斜面下端での速さ v = sqrt(2gh) [cm/s]
+
+      const effFlatLenCm = modeType === 1 ? Math.max(0, flatLenCm) : 0;
+      const effChangeCm = modeType === 1 ? Math.max(0, Math.min(effFlatLenCm, flatChangeCm)) : 0;
+      const flat1LenCm = effChangeCm;
+      const flat2LenCm = Math.max(0, effFlatLenCm - effChangeCm);
+
+      const effMu1 = modeType === 1 ? Math.max(0, frictionMu1) : 0;
+      const effMu2 = modeType === 1 ? Math.max(0, frictionMu2) : 0;
+      const decel1 = effMu1 * G_CM;
+      const decel2 = effMu2 * G_CM;
+      const flat1DL = -(decel1 * 0.01);
+      const flat2DL = -(decel2 * 0.01);
+
+      // 水平面・前半 (B〜C, 長さ flat1LenCm, 摩擦係数 effMu1)
+      let flat1TravelCm = 0;
+      let flat1Time = 0;
+      let speedAtC = bottomSpeed;
+      let stopsOnFlat1 = false;
+
+      if (flat1LenCm > 0 && bottomSpeed > 0) {
+        if (decel1 <= 1e-6) {
+          flat1TravelCm = flat1LenCm;
+          flat1Time = flat1LenCm / bottomSpeed;
+          speedAtC = bottomSpeed;
+        } else {
+          const stopDist1 = (bottomSpeed * bottomSpeed) / (2 * decel1);
+          if (stopDist1 <= flat1LenCm) {
+            flat1TravelCm = stopDist1;
+            flat1Time = bottomSpeed / decel1;
+            speedAtC = 0;
+            stopsOnFlat1 = true;
+          } else {
+            flat1TravelCm = flat1LenCm;
+            speedAtC = Math.sqrt(Math.max(0, bottomSpeed * bottomSpeed - 2 * decel1 * flat1LenCm));
+            flat1Time = (bottomSpeed - speedAtC) / decel1;
+          }
+        }
+      }
+
+      // 水平面・後半 (C〜終端, 長さ flat2LenCm, 摩擦係数 effMu2)
+      let flat2TravelCm = 0;
+      let flat2Time = 0;
+      let finalSpeed = speedAtC;
+      let stopsOnFlat2 = false;
+
+      if (!stopsOnFlat1 && flat2LenCm > 0 && speedAtC > 1e-6) {
+        if (decel2 <= 1e-6) {
+          flat2TravelCm = flat2LenCm;
+          flat2Time = flat2LenCm / speedAtC;
+          finalSpeed = speedAtC;
+        } else {
+          const stopDist2 = (speedAtC * speedAtC) / (2 * decel2);
+          if (stopDist2 <= flat2LenCm) {
+            flat2TravelCm = stopDist2;
+            flat2Time = speedAtC / decel2;
+            finalSpeed = 0;
+            stopsOnFlat2 = true;
+          } else {
+            flat2TravelCm = flat2LenCm;
+            finalSpeed = Math.sqrt(Math.max(0, speedAtC * speedAtC - 2 * decel2 * flat2LenCm));
+            flat2Time = (speedAtC - finalSpeed) / decel2;
+          }
+        }
+      }
+
+      const flatTravelCm = flat1TravelCm + flat2TravelCm;
+      const flatTime = flat1Time + flat2Time;
+      const stopsOnFlat = stopsOnFlat1 || stopsOnFlat2;
+
+      const floorDistCm = slopeDistCm + flatTravelCm; // 総走行距離 [cm]
+      const totalTrackCm = slopeDistCm + effFlatLenCm; // コース全長 [cm]
+      const maxTime = slopeTime + flatTime;
+      const maxDotFloat = maxTime * timerHz;
+
+      const physObj = {
+        mode: modeType,
+        timerHz,
+        dotsPerStrip,
+        dt,
+        heightCm,
+        angleDeg: effAngle,
+        rad,
+        sinT,
+        cosT,
+        a,
+        dL,
+        slopeDistCm,
+        slopeTime,
+        bottomSpeed,
+        flatLenCm: effFlatLenCm,
+        flatChangeCm: effChangeCm,
+        flat1LenCm,
+        flat2LenCm,
+        frictionMu1: effMu1,
+        frictionMu2: effMu2,
+        decel1,
+        decel2,
+        flat1DL,
+        flat2DL,
+        flat1TravelCm,
+        flat1Time,
+        speedAtC,
+        flat2TravelCm,
+        flat2Time,
+        flatTravelCm,
+        flatTime,
+        stopsOnFlat,
+        stopsOnFlat1,
+        stopsOnFlat2,
+        floorDistCm,
+        totalTrackCm,
+        horizBaseCm,
+        maxTime,
+        maxDotFloat,
+        finalSpeed,
+        strips: []
+      };
+
+      physObj.strips = buildStrips(physObj);
+      return physObj;
+    }
+
+    function getKinematicsAtTime(t, phys) {
+      const clampedT = Math.max(0, Math.min(phys.maxTime, t));
+      if (clampedT <= phys.slopeTime) {
+        const x = 0.5 * phys.a * clampedT * clampedT;
+        const v = phys.a * clampedT;
+        return { t: clampedT, x, v, onFlat: false, flatZone: 0, currentMu: 0 };
+      } else if (clampedT <= phys.slopeTime + phys.flat1Time) {
+        const tau1 = Math.min(phys.flat1Time, clampedT - phys.slopeTime);
+        const xFlat1 = Math.min(phys.flat1TravelCm, phys.bottomSpeed * tau1 - 0.5 * phys.decel1 * tau1 * tau1);
+        const v = Math.max(0, phys.bottomSpeed - phys.decel1 * tau1);
+        return { t: clampedT, x: phys.slopeDistCm + xFlat1, v, onFlat: true, flatZone: 1, currentMu: phys.frictionMu1 };
+      } else {
+        const tau2 = Math.min(phys.flat2Time, clampedT - (phys.slopeTime + phys.flat1Time));
+        const xFlat2 = Math.min(phys.flat2TravelCm, phys.speedAtC * tau2 - 0.5 * phys.decel2 * tau2 * tau2);
+        const v = Math.max(0, phys.speedAtC - phys.decel2 * tau2);
+        return { t: clampedT, x: phys.slopeDistCm + phys.flat1TravelCm + xFlat2, v, onFlat: true, flatZone: 2, currentMu: phys.frictionMu2 };
+      }
+    }
+
+    function getMaxSimDot() {
+      if (state.expMode === 1) return getSinglePhysics(1).maxDotFloat;
+      if (state.expMode === 2) return getSinglePhysics(2).maxDotFloat;
+      return Math.max(getSinglePhysics(1, state.heightCm, state.angleDeg, state.timerHz, 0, 0, 0, 0).maxDotFloat, getSinglePhysics(2).maxDotFloat);
+    }
+
+    function buildStrips(phys) {
+      const { maxDotFloat, dotsPerStrip, dt, floorDistCm } = phys;
+      const numFull = Math.floor(maxDotFloat / dotsPerStrip);
+      const strips = [];
+      let cum = 0;
+
+      for (let i = 0; i < numFull; i++) {
+        const tEnd = (i + 1) * 0.1;
+        const endCm = getKinematicsAtTime(tEnd, phys).x;
+        const len = Math.max(0, +(endCm - cum).toFixed(2));
+        const startCm = cum;
+        cum = endCm;
+
+        const innerDots = [];
+        for (let d = 0; d <= dotsPerStrip; d++) {
+          const t = (i * dotsPerStrip + d) * dt;
+          const x = getKinematicsAtTime(t, phys).x;
+          innerDots.push(Math.max(0, x - startCm));
+        }
+
+        strips.push({
+          num: i + 1,
+          length: len,
+          avgSpeed: +(len / 0.1).toFixed(1),
+          startCm,
+          endCm,
+          innerDots,
+          dotsPerStrip,
+          onFlat: startCm >= phys.slopeDistCm - 1e-2,
+          isPartial: false
+        });
+      }
+
+      if (maxDotFloat - numFull * dotsPerStrip > 0.05) {
+        const startCm = cum;
+        const endCm = floorDistCm;
+        const len = Math.max(0, +(endCm - startCm).toFixed(2));
+        const innerDots = [];
+        const remDots = Math.floor(maxDotFloat - numFull * dotsPerStrip);
+        for (let d = 0; d <= remDots; d++) {
+          const t = (numFull * dotsPerStrip + d) * dt;
+          const x = getKinematicsAtTime(t, phys).x;
+          innerDots.push(Math.max(0, x - startCm));
+        }
+        strips.push({
+          num: numFull + 1,
+          length: len,
+          avgSpeed: 0,
+          startCm,
+          endCm,
+          innerDots,
+          dotsPerStrip,
+          onFlat: startCm >= phys.slopeDistCm - 1e-2,
+          isPartial: true
+        });
+      }
+
+      return strips;
+    }
+
+    function getAtDot(dotFloat, phys) {
+      const clampedDot = Math.max(0, Math.min(phys.maxDotFloat, dotFloat));
+      const hitFloor = dotFloat >= phys.maxDotFloat - 1e-4;
+      const t = clampedDot * phys.dt;
+      const k = getKinematicsAtTime(t, phys);
+      const x = hitFloor ? phys.floorDistCm : k.x;
+      const v = (clampedDot === 0 && !state.playing) ? 0 : (hitFloor ? phys.finalSpeed : k.v);
+      return { d: clampedDot, t, x, v, onFlat: k.onFlat, flatZone: k.flatZone, currentMu: k.currentMu, hitFloor };
+    }
+
+    // =========================================================
+    // 残像クリックで「台車にはたらく力の図」ポップアップ表示
+    // =========================================================
+    simCanvas.addEventListener('mousemove', (e) => {
+      const rect = simCanvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      let hit = null;
+      for (let i = ghostHitBoxes.length - 1; i >= 0; i--) {
+        const g = ghostHitBoxes[i];
+        const dist = Math.hypot(mx - g.screenX, my - g.screenY);
+        if (dist <= g.radius) {
+          hit = g;
+          break;
+        }
+      }
+
+      const prevKey = state.hoveredGhost ? `${state.hoveredGhost.modeType}-${state.hoveredGhost.stripIndex}` : null;
+      const nextKey = hit ? `${hit.modeType}-${hit.stripIndex}` : null;
+      simCanvas.style.cursor = hit ? 'pointer' : 'default';
+
+      if (prevKey !== nextKey) {
+        state.hoveredGhost = hit;
+        render();
+      }
+    });
+
+    simCanvas.addEventListener('click', (e) => {
+      const rect = simCanvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      for (let i = ghostHitBoxes.length - 1; i >= 0; i--) {
+        const g = ghostHitBoxes[i];
+        const dist = Math.hypot(mx - g.screenX, my - g.screenY);
+        if (dist <= g.radius) {
+          openForcePopup(g.modeType, g.stripIndex, g.maxStripIndex);
+          return;
+        }
+      }
+    });
+
+    function openForcePopup(modeType, stripIndex, maxStripIndex) {
+      if (state.playing) {
+        state.playing = false;
+        updateStartBtn();
+      }
+      state.popupGhost = { modeType, stripIndex, maxStripIndex };
+      document.getElementById('forcePopupBackdrop').classList.add('open');
+      renderForcePopup();
+      render();
+    }
+
+    function closeForcePopup() {
+      state.popupGhost = null;
+      document.getElementById('forcePopupBackdrop').classList.remove('open');
+      render();
+    }
+
+    function onBackdropClick(e) {
+      if (e.target.id === 'forcePopupBackdrop') {
+        closeForcePopup();
+      }
+    }
+
+    function stepPopupGhost(delta) {
+      if (!state.popupGhost) return;
+      const nextIdx = Math.max(0, Math.min(state.popupGhost.maxStripIndex, state.popupGhost.stripIndex + delta));
+      state.popupGhost.stripIndex = nextIdx;
+      renderForcePopup();
+      render();
+    }
+
+    function renderForcePopup() {
+      if (!state.popupGhost) return;
+      const { modeType, stripIndex } = state.popupGhost;
+      const phys = getSinglePhysics(modeType);
+      const dotAtGhost = stripIndex * phys.dotsPerStrip;
+      const kin = getAtDot(dotAtGhost, phys);
+      const speedAtGhost = stripIndex === 0 ? 0 : kin.v;
+      const ghostLabel = stripIndex === 0 ? 'A点 (0.0s)' : `残像 ${CIRCLED_NUMS[stripIndex] || stripIndex} (${kin.t.toFixed(1)}s)`;
+
+      const titleEl = document.getElementById('forcePopupTitle');
+      if (modeType === 1) {
+        const curMu = kin.currentMu ?? 0;
+        const zoneLabel = kin.flatZone === 2 ? `水平面・後半(C〜, μ₂=${curMu.toFixed(2)})` : `水平面・前半(B〜C, μ₁=${curMu.toFixed(2)})`;
+        const placeTxt = kin.onFlat
+          ? zoneLabel
+          : `斜面（θ=${phys.angleDeg.toFixed(0)}°）`;
+        titleEl.innerHTML = `🔍 <span style="color:#38bdf8;">実験1：${placeTxt}</span> <strong>${ghostLabel}</strong> ｜ 距離 ${kin.x.toFixed(1)} cm ／ 速さ ${speedAtGhost.toFixed(1)} cm/s`;
+      } else {
+        titleEl.innerHTML = `🔍 <span style="color:#fb923c;">実験2（自由落下 90°）</span> <strong>${ghostLabel}</strong> ｜ 距離 ${kin.x.toFixed(1)} cm ／ 速さ ${speedAtGhost.toFixed(1)} cm/s`;
+      }
+
+      drawForcePopupCanvas(phys, stripIndex, speedAtGhost, kin);
+    }
+
+    function drawForcePopupCanvas(phys, stripIndex, speedAtGhost, kin) {
+      const dpr = window.devicePixelRatio || 1;
+      const wrap = forcePopupCanvas.parentElement.getBoundingClientRect();
+      forcePopupCanvas.width = Math.floor(wrap.width * dpr);
+      forcePopupCanvas.height = Math.floor(wrap.height * dpr);
+      const ctx = forcePopupCtx;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const W = wrap.width;
+      const H = wrap.height;
+      ctx.clearRect(0, 0, W, H);
+
+      // 背景グリッド
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.08)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < W; x += 36) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+      for (let y = 0; y < H; y += 36) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+
+      const cx = W * 0.52;
+      const cy = H * 0.50;
+      const mgLen = Math.min(W, H) * 0.39; // 画面いっぱいに大きく描画
+
+      if (phys.mode === 1 && kin && kin.onFlat) {
+        const curMu = kin.currentMu ?? 0;
+        const isZone2 = kin.flatZone === 2;
+        // 水平面上の台車にはたらく力の拡大図（特大）
+        ctx.save();
+        ctx.translate(cx, cy);
+
+        // 水平面板（特大）
+        ctx.fillStyle = curMu > 0 ? (isZone2 ? '#3f2634' : '#3b2f2f') : '#334155';
+        ctx.strokeStyle = curMu > 0 ? (isZone2 ? '#fb923c' : '#f472b6') : '#34d399';
+        ctx.lineWidth = 2.5;
+        ctx.fillRect(-360, 34, 720, 20);
+        ctx.strokeRect(-360, 34, 720, 20);
+
+        // 記録テープ
+        ctx.strokeStyle = '#f8fafc';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(76, 0);
+        ctx.lineTo(350, 0);
+        ctx.stroke();
+
+        // 台車（特大）
+        ctx.fillStyle = '#cbd5e1';
+        ctx.beginPath();
+        ctx.arc(-45, 22, 12, 0, Math.PI * 2);
+        ctx.arc(45, 22, 12, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#2563eb';
+        ctx.strokeStyle = '#93c5fd';
+        ctx.lineWidth = 3;
+        ctx.fillRect(-76, -22, 152, 36);
+        ctx.strokeRect(-76, -22, 152, 36);
+
+        // 速さベクトル（左向きに運動）
+        if (speedAtGhost > 1) {
+          const vArrowLen = Math.min(220, 35 + speedAtGhost * 0.42);
+          drawBigArrow(ctx, -80, -42, -80 - vArrowLen, -42, '#fde047', 3.5);
+          ctx.fillStyle = '#fde047';
+          ctx.font = 'bold 14px Consolas, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`速さ v = ${speedAtGhost.toFixed(0)} cm/s`, -80 - vArrowLen * 0.5, -56);
+        }
+
+        // 1. 垂直抗力 N (鉛直上向き)
+        drawBigArrow(ctx, 0, 0, 0, -mgLen, '#10b981', 4.8);
+        // 2. 重力 W (鉛直下向き)
+        drawBigArrow(ctx, 0, 0, 0, mgLen, '#f8fafc', 4.8);
+
+        // 3. 動摩擦力 f = μN（運動と逆向き＝右向き）
+        if (curMu > 0 && speedAtGhost > 0.5) {
+          const fFric = Math.max(28, mgLen * curMu);
+          drawBigArrow(ctx, 0, 0, fFric, 0, '#ef4444', 5.8);
+          ctx.fillStyle = '#f87171';
+          ctx.font = 'bold 16px sans-serif';
+          ctx.textAlign = 'left';
+          const muSym = isZone2 ? 'μ₂' : 'μ₁';
+          ctx.fillText(`動摩擦力 (${muSym}=${curMu.toFixed(2)})`, fFric + 14, -10);
+        }
+
+        // 作用点ドット
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#090d16';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, 6.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = 'bold 16px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#34d399';
+        ctx.fillText('垂直抗力', 18, -mgLen + 14);
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText('重力', 18, mgLen - 6);
+
+        ctx.restore();
+      } else if (phys.mode === 1) {
+        const rad = phys.rad;
+        const fParallel = mgLen * Math.sin(rad);
+        const fPerp = mgLen * Math.cos(rad);
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(-rad);
+
+        // 斜面板（特大）
+        ctx.fillStyle = '#334155';
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2.5;
+        ctx.fillRect(-340, 34, 680, 20);
+        ctx.strokeRect(-340, 34, 680, 20);
+
+        // 記録テープ
+        ctx.strokeStyle = '#f8fafc';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(76, 0);
+        ctx.lineTo(330, 0);
+        ctx.stroke();
+
+        // 台車（特大）
+        ctx.fillStyle = '#cbd5e1';
+        ctx.beginPath();
+        ctx.arc(-45, 22, 12, 0, Math.PI * 2);
+        ctx.arc(45, 22, 12, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#2563eb';
+        ctx.strokeStyle = '#93c5fd';
+        ctx.lineWidth = 3;
+        ctx.fillRect(-76, -22, 152, 36);
+        ctx.strokeRect(-76, -22, 152, 36);
+
+        // 速さベクトル（運動の向き：台車上方に黄色の矢印で表示）
+        if (speedAtGhost > 1) {
+          const vArrowLen = Math.min(220, 35 + speedAtGhost * 0.42);
+          drawBigArrow(ctx, -80, -42, -80 - vArrowLen, -42, '#fde047', 3.5);
+          ctx.save();
+          ctx.translate(-80 - vArrowLen * 0.5, -56);
+          ctx.rotate(rad);
+          ctx.fillStyle = '#fde047';
+          ctx.font = 'bold 14px Consolas, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`速さ v = ${speedAtGhost.toFixed(0)} cm/s`, 0, 0);
+          ctx.restore();
+        }
+
+        // --- 作用点（台車の重心 (0, 0)）からの力の作図（特大） ---
+        // 分力の平行四辺形（破線）
+        ctx.strokeStyle = 'rgba(226, 232, 240, 0.65)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([7, 5]);
+        ctx.beginPath();
+        ctx.moveTo(-fParallel, 0);
+        ctx.lineTo(-fParallel, fPerp);
+        ctx.lineTo(0, fPerp);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 1. 垂直抗力 N (斜面に垂直上向き: (0, -fPerp))
+        drawBigArrow(ctx, 0, 0, 0, -fPerp, '#10b981', 4.5);
+
+        // 2. 斜面に垂直な分力 (0, +fPerp)
+        drawBigArrow(ctx, 0, 0, 0, fPerp, '#38bdf8', 4.2);
+
+        // 3. 重力 W (鉛直下向き: (-fParallel, +fPerp))
+        drawBigArrow(ctx, 0, 0, -fParallel, fPerp, '#f8fafc', 4.5);
+
+        // 4. 斜面に平行な分力 (-fParallel, 0)
+        drawBigArrow(ctx, 0, 0, -fParallel, 0, '#ef4444', 5.8);
+
+        // 作用点ドット
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#090d16';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, 6.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // ラベルを水平に大きく描画
+        const drawHorizLabel = (lx, ly, text, color, align = 'center') => {
+          ctx.save();
+          ctx.translate(lx, ly);
+          ctx.rotate(rad);
+          ctx.fillStyle = color;
+          ctx.font = 'bold 16px sans-serif';
+          ctx.textAlign = align;
+          ctx.fillText(text, 0, 0);
+          ctx.restore();
+        };
+
+        drawHorizLabel(-fParallel - 14, -12, '斜面に平行な分力', '#f87171', 'right');
+        drawHorizLabel(16, fPerp - 4, '斜面に垂直な分力', '#38bdf8', 'left');
+        drawHorizLabel(16, -fPerp + 12, '垂直抗力', '#34d399', 'left');
+        drawHorizLabel(-fParallel - 10, fPerp + 24, '重力', '#f8fafc', 'center');
+
+        ctx.restore();
+      } else {
+        // 自由落下（角度90°）の力の拡大図（特大）
+        ctx.save();
+        ctx.translate(cx, cy - 30);
+
+        // 記録テープ
+        ctx.strokeStyle = '#f8fafc';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(0, -68);
+        ctx.lineTo(0, -200);
+        ctx.stroke();
+
+        // 縦向き台車（特大）
+        ctx.fillStyle = '#cbd5e1';
+        ctx.beginPath();
+        ctx.arc(-28, -34, 11, 0, Math.PI * 2);
+        ctx.arc(-28, 34, 11, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ea580c';
+        ctx.strokeStyle = '#fed7aa';
+        ctx.lineWidth = 3;
+        ctx.fillRect(-22, -68, 44, 136);
+        ctx.strokeRect(-22, -68, 44, 136);
+
+        // 重力 W（真下向き 100%）
+        drawBigArrow(ctx, 0, 0, 0, mgLen * 1.15, '#ef4444', 6.0);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#090d16';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, 6.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#f87171';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillText('重力', 24, mgLen * 1.15 - 10);
+
+        if (speedAtGhost > 1) {
+          const vArrowLen = Math.min(190, 35 + speedAtGhost * 0.35);
+          drawBigArrow(ctx, -60, 0, -60, vArrowLen, '#fde047', 3.5);
+          ctx.fillStyle = '#fde047';
+          ctx.font = 'bold 15px Consolas, sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText(`速さ v = ${speedAtGhost.toFixed(0)} cm/s`, -72, vArrowLen);
+        }
+
+        ctx.restore();
+      }
+    }
+
+    function drawBigArrow(ctx, x1, y1, x2, y2, color, width) {
+      const head = 14;
+      const ang = Math.atan2(y2 - y1, x2 - x1);
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - head * Math.cos(ang - Math.PI / 6), y2 - head * Math.sin(ang - Math.PI / 6));
+      ctx.lineTo(x2 - head * Math.cos(ang + Math.PI / 6), y2 - head * Math.sin(ang + Math.PI / 6));
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // =========================================================
+    // 50Hz / 60Hz 切り替え関数
+    // =========================================================
+    function setTimerHz(hz) {
+      if (state.timerHz === hz) return;
+      const currentTimeSec = state.currentDot / state.timerHz;
+      state.timerHz = hz;
+      state.currentDot = currentTimeSec * state.timerHz;
+
+      document.getElementById('btnHz50').className = 'hz-btn' + (hz === 50 ? ' active-hz' : '');
+      document.getElementById('btnHz60').className = 'hz-btn' + (hz === 60 ? ' active-hz' : '');
+
+      const dps = hz / 10;
+      showToast(`⚡ 記録タイマーを ${hz}Hz（1秒間に${hz}回打点 / ${dps}打点＝0.1秒）に切り替えました`);
+      updateStartBtn();
+      if (state.popupGhost) renderForcePopup();
+      render();
+    }
+
+    // =========================================================
+    // 実験1の結果記録機能（最大3個まで記録・比較）
+    // =========================================================
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById('toastMsg');
+      el.textContent = msg;
+      el.classList.add('show');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+    }
+
+    function saveExp1Record() {
+      if (state.expMode === 2) {
+        showToast('⚠️ 実験1（斜面）の結果のみ記録できます。実験1または並べて表示に切り替えてください。');
+        return;
+      }
+      if (state.savedRecords.length >= 3) {
+        showToast('⚠️ 記録は3個までです。下の記録チップの [✕] で削除すると新しく記録できます。');
+        return;
+      }
+
+      const flatLen = state.expMode === 1 ? state.flatLenCm : 0;
+      const mu1 = state.expMode === 1 ? state.frictionMu1 : 0;
+      const flatChg = state.expMode === 1 ? Math.min(state.flatChangeCm, flatLen) : 0;
+      const mu2 = state.expMode === 1 ? state.frictionMu2 : 0;
+      const phys = getSinglePhysics(1, state.heightCm, state.angleDeg, state.timerHz, flatLen, mu1, flatChg, mu2);
+      const recIndex = state.savedRecords.length + 1;
+      const color = RECORD_COLORS[(recIndex - 1) % RECORD_COLORS.length];
+
+      state.savedRecords.push({
+        id: Date.now() + Math.random(),
+        timerHz: state.timerHz,
+        heightCm: state.heightCm,
+        angleDeg: state.angleDeg,
+        flatLenCm: flatLen,
+        frictionMu1: mu1,
+        flatChangeCm: flatChg,
+        frictionMu2: mu2,
+        phys,
+        color
+      });
+
+      updateSavedRecordsUI();
+      showToast(`✅ 記録${state.savedRecords.length}（${state.timerHz}Hz, h=${state.heightCm}cm, θ=${state.angleDeg}°, 水平=${flatLen}cm, μ₁=${mu1.toFixed(2)}→${flatChg}cm〜μ₂=${mu2.toFixed(2)}）を保存しました！`);
+      render();
+    }
+
+    function deleteRecord(index) {
+      state.savedRecords.splice(index, 1);
+      state.savedRecords.forEach((rec, i) => {
+        rec.color = RECORD_COLORS[i % RECORD_COLORS.length];
+      });
+      updateSavedRecordsUI();
+      render();
+    }
+
+    function clearAllRecords() {
+      state.savedRecords = [];
+      updateSavedRecordsUI();
+      showToast('🗑 すべての記録を消去しました');
+      render();
+    }
+
+    function formatRecordFlatSummary(rec) {
+      const fl = rec.flatLenCm ?? 0;
+      if (fl <= 0) return '水平=0cm';
+      const m1 = (rec.frictionMu1 ?? 0).toFixed(2);
+      const m2 = (rec.frictionMu2 ?? 0).toFixed(2);
+      const chg = rec.flatChangeCm ?? fl;
+      if (chg <= 0) return `水平=${fl}cm(μ=${m2})`;
+      if (chg >= fl || m1 === m2) return `水平=${fl}cm(μ=${m1})`;
+      return `水平=${fl}cm(μ₁=${m1}→${chg}cm〜μ₂=${m2})`;
+    }
+
+    function updateSavedRecordsUI() {
+      const count = state.savedRecords.length;
+      const btnRec = document.getElementById('btnRecordExp1');
+      btnRec.textContent = `📌 結果を記録 (${count}/3)`;
+      btnRec.disabled = state.expMode === 2;
+
+      document.getElementById('lblSavedCount').textContent = count;
+      document.getElementById('btnClearRecords').style.display = count > 0 ? 'inline-flex' : 'none';
+
+      const bar = document.getElementById('savedRecordsBar');
+      if (count === 0) {
+        bar.innerHTML = '';
+      } else {
+        bar.innerHTML = state.savedRecords.map((rec, i) => `
+          <div class="record-chip" style="border-color:${rec.color};">
+            <span style="color:${rec.color};">● 記録${i + 1}</span>
+            <span>${rec.timerHz}Hz / h=${rec.heightCm}cm / θ=${rec.angleDeg}° / ${formatRecordFlatSummary(rec)}</span>
+            <button onclick="deleteRecord(${i})" title="この記録を削除">✕</button>
+          </div>
+        `).join('') + `
+          <button class="btn btn-chart" style="height:30px; font-size:0.75rem; padding:0 10px; border-radius:999px;" onclick="openSavedComparison()">
+            📊 記録をグラフで比較
+          </button>
+        `;
+      }
+    }
+
+    function openSavedComparison() {
+      state.chartTab = 'saved';
+      state.chartOpen = true;
+      updateChartTabsUI();
+      document.getElementById('chartModal').classList.add('open');
+      document.getElementById('btnToggleChart').classList.add('active');
+      resizeAllCanvases();
+    }
+
+    function setChartTab(tab) {
+      state.chartTab = tab;
+      updateChartTabsUI();
+      render();
+    }
+
+    function updateChartTabsUI() {
+      document.getElementById('tabSavedExp1').className = 'modal-tab' + (state.chartTab === 'saved' ? ' active' : '');
+      document.getElementById('tabSlopeVsFree').className = 'modal-tab' + (state.chartTab === 'slope_free' ? ' active' : '');
+    }
+
+    // =========================================================
+    // 画面リサイズ対応（100vw × 100vh 高DPI・スクロール無し）
+    // =========================================================
+    function resizeAllCanvases() {
+      const dpr = window.devicePixelRatio || 1;
+
+      const simRect = document.getElementById('simStage').getBoundingClientRect();
+      simCanvas.width = Math.floor(simRect.width * dpr);
+      simCanvas.height = Math.floor(simRect.height * dpr);
+      simCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const tapeRect = document.getElementById('tapeStage').getBoundingClientRect();
+      tapeCanvas.width = Math.floor(tapeRect.width * dpr);
+      tapeCanvas.height = Math.floor(tapeRect.height * dpr);
+      tapeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      if (state.chartOpen) {
+        const chartRect = document.getElementById('chartStage').getBoundingClientRect();
+        chartCanvas.width = Math.floor(chartRect.width * dpr);
+        chartCanvas.height = Math.floor(chartRect.height * dpr);
+        chartCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      if (state.popupGhost) {
+        renderForcePopup();
+      }
+
+      if (state.showEnergyGraph) {
+        clampEnergyPanelToStage();
+        const eRect = document.getElementById('energyCanvasWrap').getBoundingClientRect();
+        if (eRect.width > 0 && eRect.height > 0) {
+          energyCanvas.width = Math.floor(eRect.width * dpr);
+          energyCanvas.height = Math.floor(eRect.height * dpr);
+          energyCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+      }
+
+      render();
+    }
+
+    window.addEventListener('resize', resizeAllCanvases);
+
+    // =========================================================
+    // UI コントロール
+    // =========================================================
+    function setExperiment(mode) {
+      state.playing = false;
+      state.expMode = mode;
+      state.currentDot = 0;
+      closeForcePopup();
+
+      document.getElementById('btnExp1').className = 'preset-btn' + (mode === 1 ? ' active-1' : '');
+      document.getElementById('btnExp2').className = 'preset-btn' + (mode === 2 ? ' active-2' : '');
+      document.getElementById('btnExp3').className = 'preset-btn' + (mode === 3 ? ' active-3' : '');
+
+      const sliderWrap = document.getElementById('angleSliderWrap');
+      const unitToggle = document.getElementById('heightUnitToggle');
+      const flatGroup = document.getElementById('flatControlsGroup');
+      flatGroup.style.display = mode === 1 ? 'flex' : 'none';
+
+      if (mode === 2) {
+        sliderWrap.classList.add('disabled');
+        document.getElementById('angleVal').textContent = '90°';
+        unitToggle.style.display = 'inline-flex';
+      } else {
+        sliderWrap.classList.remove('disabled');
+        document.getElementById('angleVal').textContent = `${state.angleDeg.toFixed(0)}°`;
+        unitToggle.style.display = 'none';
+        if (state.heightUnit === 'm') {
+          state.heightUnit = 'cm';
+        }
+        if (state.heightCm > 200) {
+          state.heightCm = 200;
+        }
+      }
+
+      syncHeightSliderUI();
+      updateSavedRecordsUI();
+      updateStartBtn();
+      render();
+    }
+
+    function setHeightUnit(unit) {
+      if (state.expMode !== 2) return;
+      if (state.heightUnit === unit) return;
+      state.heightUnit = unit;
+      state.playing = false;
+      state.currentDot = 0;
+      closeForcePopup();
+
+      if (unit === 'm') {
+        const mVal = Math.max(0.2, Math.min(20.0, Math.round((state.heightCm / 100) / 0.2) * 0.2));
+        state.heightCm = Math.round(mVal * 100);
+        showToast(`📏 高さの単位を m（メートル：0.2m〜20.0m）に切り替えました`);
+      } else {
+        const cmVal = Math.max(20, Math.min(200, Math.round(state.heightCm / 5) * 5));
+        state.heightCm = cmVal;
+        showToast(`📏 高さの単位を cm（センチメートル：20cm〜200cm）に切り替えました`);
+      }
+
+      syncHeightSliderUI();
+      updateStartBtn();
+      render();
+    }
+
+    function syncHeightSliderUI() {
+      const slider = document.getElementById('heightSlider');
+      const valEl = document.getElementById('heightVal');
+      document.getElementById('btnUnitCm').className = 'unit-btn' + (state.heightUnit === 'cm' ? ' active' : '');
+      document.getElementById('btnUnitM').className = 'unit-btn' + (state.heightUnit === 'm' ? ' active' : '');
+
+      if (isFreeMeterMode()) {
+        slider.min = '0.2';
+        slider.max = '20';
+        slider.step = '0.2';
+        const mVal = +(state.heightCm / 100).toFixed(1);
+        slider.value = mVal;
+        valEl.textContent = `${mVal.toFixed(1)} m`;
+      } else {
+        slider.min = '20';
+        slider.max = '200';
+        slider.step = '5';
+        const cmVal = Math.max(20, Math.min(200, Math.round(state.heightCm / 5) * 5));
+        state.heightCm = cmVal;
+        slider.value = cmVal;
+        valEl.textContent = `${cmVal.toFixed(0)} cm`;
+      }
+    }
+
+    function onHeightInput() {
+      const rawVal = parseFloat(document.getElementById('heightSlider').value);
+      if (isFreeMeterMode()) {
+        state.heightCm = Math.round(rawVal * 100);
+        document.getElementById('heightVal').textContent = `${rawVal.toFixed(1)} m`;
+      } else {
+        state.heightCm = rawVal;
+        document.getElementById('heightVal').textContent = `${state.heightCm.toFixed(0)} cm`;
+      }
+      state.playing = false;
+      state.currentDot = 0;
+      closeForcePopup();
+      updateStartBtn();
+      render();
+    }
+
+    function onAngleInput() {
+      if (state.expMode === 2) {
+        state.expMode = 1;
+        state.heightUnit = 'cm';
+        document.getElementById('heightUnitToggle').style.display = 'none';
+        document.getElementById('flatControlsGroup').style.display = 'flex';
+        syncHeightSliderUI();
+      }
+      state.angleDeg = parseFloat(document.getElementById('angleSlider').value);
+      state.playing = false;
+      state.currentDot = 0;
+      closeForcePopup();
+      document.getElementById('angleVal').textContent = `${state.angleDeg.toFixed(0)}°`;
+      document.getElementById('btnExp1').className = 'preset-btn' + (state.expMode === 1 ? ' active-1' : '');
+      document.getElementById('btnExp2').className = 'preset-btn';
+      document.getElementById('btnExp3').className = 'preset-btn' + (state.expMode === 3 ? ' active-3' : '');
+      updateSavedRecordsUI();
+      updateStartBtn();
+      render();
+    }
+
+    function onFlatLenInput() {
+      state.flatLenCm = parseFloat(document.getElementById('flatLenSlider').value);
+      const chgSlider = document.getElementById('flatChangeSlider');
+      chgSlider.max = String(state.flatLenCm);
+      if (state.flatChangeCm > state.flatLenCm) {
+        state.flatChangeCm = state.flatLenCm;
+        chgSlider.value = String(state.flatChangeCm);
+        document.getElementById('flatChangeVal').textContent = `${state.flatChangeCm.toFixed(0)} cm`;
+      }
+      state.playing = false;
+      state.currentDot = 0;
+      closeForcePopup();
+      document.getElementById('flatLenVal').textContent = `${state.flatLenCm.toFixed(0)} cm`;
+      updateStartBtn();
+      render();
+    }
+
+    function onFlatChangeInput() {
+      const raw = parseFloat(document.getElementById('flatChangeSlider').value);
+      state.flatChangeCm = Math.min(state.flatLenCm, Math.max(0, raw));
+      document.getElementById('flatChangeSlider').value = String(state.flatChangeCm);
+      state.playing = false;
+      state.currentDot = 0;
+      closeForcePopup();
+      document.getElementById('flatChangeVal').textContent = `${state.flatChangeCm.toFixed(0)} cm`;
+      updateStartBtn();
+      render();
+    }
+
+    function onFriction1Input() {
+      state.frictionMu1 = parseFloat(document.getElementById('friction1Slider').value);
+      state.playing = false;
+      state.currentDot = 0;
+      closeForcePopup();
+      document.getElementById('friction1Val').textContent = state.frictionMu1.toFixed(2);
+      updateStartBtn();
+      render();
+    }
+
+    function onFriction2Input() {
+      state.frictionMu2 = parseFloat(document.getElementById('friction2Slider').value);
+      state.playing = false;
+      state.currentDot = 0;
+      closeForcePopup();
+      document.getElementById('friction2Val').textContent = state.frictionMu2.toFixed(2);
+      updateStartBtn();
+      render();
+    }
+
+    function onSpeedChange() {
+      state.speedMultiplier = parseFloat(document.getElementById('speedSelect').value);
+    }
+
+    function toggleEnergyGraph(show) {
+      state.showEnergyGraph = Boolean(show);
+      document.getElementById('chkEnergy').checked = state.showEnergyGraph;
+      document.getElementById('energyPanel').classList.toggle('hidden', !state.showEnergyGraph);
+      resizeAllCanvases();
+    }
+
+    function setEnergyAxis(axis) {
+      state.energyAxis = axis;
+      document.getElementById('btnEnergyAxisDist').className = 'energy-axis-btn' + (axis === 'dist' ? ' active' : '');
+      document.getElementById('btnEnergyAxisTime').className = 'energy-axis-btn' + (axis === 'time' ? ' active' : '');
+      render();
+    }
+
+    function togglePlay() {
+      closeForcePopup();
+      const maxDot = getMaxSimDot();
+      if (state.playing) {
+        state.playing = false;
+        updateStartBtn();
+        render();
+      } else {
+        if (state.currentDot >= maxDot - 1e-3) {
+          state.currentDot = 0;
+        }
+        state.playing = true;
+        state.lastTime = performance.now();
+        updateStartBtn();
+        requestAnimationFrame(tick);
+      }
+    }
+
+    function stepOneDot() {
+      closeForcePopup();
+      const maxDot = getMaxSimDot();
+      state.playing = false;
+      if (state.currentDot >= maxDot - 1e-3) {
+        state.currentDot = 1;
+      } else {
+        state.currentDot = Math.min(maxDot, Math.floor(state.currentDot) + 1);
+      }
+      updateStartBtn();
+      render();
+    }
+
+    // 一時停止中（停止中）にマウスホイールで時間を進める（下回転）・戻す（上回転）
+    function stepByWheelDots(direction, useLargeStep = false) {
+      const maxDot = getMaxSimDot();
+      const dps = state.timerHz / 10; // 0.1秒分の打点数 (5 or 6)
+      const step = useLargeStep ? dps : 1;
+
+      if (direction > 0) {
+        // 下回転：時間を進める
+        if (step === 1) {
+          state.currentDot = Math.min(maxDot, Math.floor(state.currentDot + 1e-4) + 1);
+        } else {
+          state.currentDot = Math.min(maxDot, state.currentDot + step);
+        }
+      } else if (direction < 0) {
+        // 上回転：時間を戻す
+        if (step === 1) {
+          state.currentDot = Math.max(0, Math.ceil(state.currentDot - 1e-4) - 1);
+        } else {
+          state.currentDot = Math.max(0, state.currentDot - step);
+        }
+      }
+      updateStartBtn();
+      render();
+    }
+
+    window.addEventListener('wheel', (e) => {
+      // 再生中、または台紙グラフのデータ表スクロール操作中は除外
+      if (state.playing) return;
+      if (state.chartOpen && e.target && e.target.closest('.table-scroll')) return;
+      if (Math.abs(e.deltaY) < 1e-3) return;
+
+      e.preventDefault();
+
+      // 力の図ポップアップ表示中は、下回転で次の残像(+0.1s)、上回転で前の残像(-0.1s)へ移動
+      if (state.popupGhost) {
+        stepPopupGhost(e.deltaY > 0 ? 1 : -1);
+        return;
+      }
+
+      // 下回転 (deltaY > 0) ＝ 時間を進める (+1)、上回転 (deltaY < 0) ＝ 時間を戻す (-1)
+      const dir = e.deltaY > 0 ? 1 : -1;
+      stepByWheelDots(dir, e.shiftKey);
+    }, { passive: false });
+
+    function resetSim() {
+      closeForcePopup();
+      state.playing = false;
+      state.currentDot = 0;
+      updateStartBtn();
+      render();
+    }
+
+    function updateStartBtn() {
+      const maxDot = getMaxSimDot();
+      const btn = document.getElementById('btnStart');
+      if (state.playing) {
+        btn.textContent = '⏸ 一時停止';
+        btn.classList.add('playing');
+      } else if (state.currentDot > 0 && state.currentDot < maxDot - 1e-3) {
+        btn.textContent = '▶ 再開';
+        btn.classList.remove('playing');
+      } else if (state.currentDot >= maxDot - 1e-3) {
+        btn.textContent = '▶ もう一度スタート';
+        btn.classList.remove('playing');
+      } else {
+        btn.textContent = '▶ スタート';
+        btn.classList.remove('playing');
+      }
+    }
+
+    function toggleChartModal() {
+      state.chartOpen = !state.chartOpen;
+      if (state.chartOpen) {
+        if (state.savedRecords.length > 0) {
+          state.chartTab = 'saved';
+        } else if (state.expMode === 3) {
+          state.chartTab = 'slope_free';
+        }
+        updateChartTabsUI();
+      }
+      document.getElementById('chartModal').classList.toggle('open', state.chartOpen);
+      document.getElementById('btnToggleChart').classList.toggle('active', state.chartOpen);
+      resizeAllCanvases();
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    document.addEventListener('fullscreenchange', () => {
+      const btn = document.getElementById('btnFullscreen');
+      btn.textContent = document.fullscreenElement ? '🗗 解除' : '⛶ 全画面';
+      setTimeout(resizeAllCanvases, 60);
+    });
+
+    function tick(now) {
+      if (!state.playing) return;
+      const maxDot = getMaxSimDot();
+      const dtSec = (now - state.lastTime) / 1000;
+      state.lastTime = now;
+
+      state.currentDot += dtSec * state.timerHz * state.speedMultiplier;
+      if (state.currentDot >= maxDot) {
+        state.currentDot = maxDot;
+        state.playing = false;
+        updateStartBtn();
+      }
+      render();
+      if (state.playing) {
+        requestAnimationFrame(tick);
+      }
+    }
+
+    // =========================================================
+    // レンダリング統括
+    // =========================================================
+    function render() {
+      ghostHitBoxes = [];
+
+      const pSlope = getSinglePhysics(1);
+      const pFree = getSinglePhysics(2);
+      const kSlope = getAtDot(state.currentDot, pSlope);
+      const kFree = getAtDot(state.currentDot, pFree);
+
+      updateHudAndHeader(pSlope, kSlope, pFree, kFree);
+
+      if (state.expMode === 1) {
+        drawSlopeStageAutoFit(pSlope, kSlope);
+        drawSingleTapeStage(pSlope, kSlope);
+      } else if (state.expMode === 2) {
+        drawFreeFallStageAutoFit(pFree, kFree);
+        drawSingleTapeStage(pFree, kFree);
+      } else {
+        drawSideBySideStageAutoFit(pSlope, kSlope, pFree, kFree);
+        drawDualTapeStage(pSlope, kSlope, pFree, kFree);
+      }
+
+      if (state.showEnergyGraph) {
+        drawEnergyPanel(pSlope, kSlope, pFree, kFree);
+      }
+
+      if (state.chartOpen) {
+        drawChartModal();
+      }
+    }
+
+    // =========================================================
+    // 位置エネルギー(Ep)・運動エネルギー(Ek)・力学的エネルギー(Em) グラフ描画
+    // =========================================================
+    function calcEnergyPercent(xCm, vCmPerSec, phys) {
+      const e0 = Math.max(1e-6, G_CM * phys.heightCm); // m=1 とした初期位置エネルギー m*g*h0
+      let hNow = 0;
+      if (phys.mode === 1) {
+        if (xCm <= phys.slopeDistCm) {
+          hNow = Math.max(0, phys.heightCm * (1 - xCm / Math.max(1e-6, phys.slopeDistCm)));
+        } else {
+          hNow = 0;
+        }
+      } else {
+        hNow = Math.max(0, phys.heightCm - xCm);
+      }
+      const epPct = Math.max(0, Math.min(100, (G_CM * hNow / e0) * 100));
+      const ekPct = Math.max(0, Math.min(100, (0.5 * vCmPerSec * vCmPerSec / e0) * 100));
+      const emPct = Math.max(0, Math.min(100, epPct + ekPct));
+      return { epPct, ekPct, emPct };
+    }
+
+    function calcEnergyAtDistance(xCm, phys) {
+      const clampedX = Math.max(0, Math.min(phys.floorDistCm, xCm));
+      const e0 = Math.max(1e-6, G_CM * phys.heightCm);
+      if (phys.mode === 2) {
+        const epPct = Math.max(0, Math.min(100, ((phys.heightCm - clampedX) / Math.max(1e-6, phys.heightCm)) * 100));
+        const ekPct = 100 - epPct;
+        return { epPct, ekPct, emPct: 100 };
+      }
+      if (clampedX <= phys.slopeDistCm) {
+        const epPct = Math.max(0, Math.min(100, (1 - clampedX / Math.max(1e-6, phys.slopeDistCm)) * 100));
+        const ekPct = 100 - epPct;
+        return { epPct, ekPct, emPct: 100 };
+      }
+      const sFlat = clampedX - phys.slopeDistCm;
+      let vSq = phys.bottomSpeed * phys.bottomSpeed;
+      if (sFlat <= phys.flat1LenCm) {
+        vSq = Math.max(0, vSq - 2 * phys.frictionMu1 * G_CM * sFlat);
+      } else {
+        const s2 = sFlat - phys.flat1LenCm;
+        const vC2 = Math.max(0, vSq - 2 * phys.frictionMu1 * G_CM * phys.flat1LenCm);
+        vSq = Math.max(0, vC2 - 2 * phys.frictionMu2 * G_CM * s2);
+      }
+      const ekPct = Math.max(0, Math.min(100, (0.5 * vSq / e0) * 100));
+      return { epPct: 0, ekPct, emPct: ekPct };
+    }
+
+    function drawEnergyPanel(pSlope, kSlope, pFree, kFree) {
+      const wrap = document.getElementById('energyCanvasWrap');
+      if (!wrap) return;
+      const rect = wrap.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      const targetW = Math.floor(rect.width * dpr);
+      const targetH = Math.floor(rect.height * dpr);
+      if (energyCanvas.width !== targetW || energyCanvas.height !== targetH) {
+        energyCanvas.width = targetW;
+        energyCanvas.height = targetH;
+      }
+      const ctx = energyCtx;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const W = rect.width;
+      const H = rect.height;
+      ctx.clearRect(0, 0, W, H);
+
+      const phys = state.expMode === 2 ? pFree : pSlope;
+      const kin = state.expMode === 2 ? kFree : kSlope;
+      const isInitZero = kin.d === 0 && !state.playing;
+      const curE = calcEnergyPercent(kin.x, isInitZero ? 0 : kin.v, phys);
+
+      const showEp = document.getElementById('chkEp').checked;
+      const showEk = document.getElementById('chkEk').checked;
+      const showEm = document.getElementById('chkEm').checked;
+
+      // ウィンドウの拡大・縮小に応じたレスポンシブ寸法
+      const scale = Math.max(0.85, Math.min(1.8, Math.min(W / 400, H / 210)));
+      const barAreaW = Math.max(106, Math.min(240, Math.round(W * 0.31)));
+      const padT = Math.round(20 * scale);
+      const padB = Math.round(28 * scale);
+      const barTop = padT;
+      const barBottom = H - padB;
+      const barMaxH = Math.max(40, barBottom - barTop);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = `bold ${Math.round(10 * scale)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('現在のエネルギー比', barAreaW * 0.5, Math.round(13 * scale));
+
+      // 棒グラフ背景枠
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
+      ctx.lineWidth = 1;
+      [0, 50, 100].forEach(pct => {
+        const y = barBottom - (pct / 100) * barMaxH;
+        ctx.beginPath();
+        ctx.moveTo(10, y);
+        ctx.lineTo(barAreaW - 6, y);
+        ctx.stroke();
+      });
+
+      const bars = [
+        { label: '位置Ep', pct: curE.epPct, color: '#38bdf8', enabled: showEp },
+        { label: '運動Ek', pct: curE.ekPct, color: '#34d399', enabled: showEk },
+        { label: '力学Em', pct: curE.emPct, color: '#fbbf24', enabled: showEm, isTotal: true }
+      ];
+
+      const bw = Math.max(18, Math.min(48, Math.floor((barAreaW - 24) / 3.9)));
+      const gap = Math.max(8, Math.floor((barAreaW - 20 - bw * 3) / 2));
+      const startBx = Math.max(10, Math.floor((barAreaW - (bw * 3 + gap * 2)) * 0.5));
+
+      bars.forEach((b, idx) => {
+        const bx = startBx + idx * (bw + gap);
+        // 100%枠
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
+        ctx.lineWidth = 1;
+        ctx.fillRect(bx, barTop, bw, barMaxH);
+        ctx.strokeRect(bx, barTop, bw, barMaxH);
+
+        if (b.enabled) {
+          if (b.isTotal) {
+            // Ep + Ek の積み上げ表示 ＋ 摩擦による熱エネルギー減少分
+            const hEp = (curE.epPct / 100) * barMaxH;
+            const hEk = (curE.ekPct / 100) * barMaxH;
+            const lossPct = Math.max(0, 100 - curE.emPct);
+            const hLoss = (lossPct / 100) * barMaxH;
+
+            if (hLoss > 1) {
+              ctx.fillStyle = 'rgba(244, 114, 182, 0.22)';
+              ctx.fillRect(bx, barTop, bw, hLoss);
+            }
+            ctx.fillStyle = '#34d399';
+            ctx.fillRect(bx, barBottom - hEp - hEk, bw, hEk);
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(bx, barBottom - hEp, bw, hEp);
+
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 1.6;
+            ctx.strokeRect(bx, barBottom - hEp - hEk, bw, hEp + hEk);
+          } else {
+            const bh = (b.pct / 100) * barMaxH;
+            ctx.fillStyle = b.color;
+            ctx.fillRect(bx, barBottom - bh, bw, bh);
+          }
+        }
+
+        // 数値 (%)
+        ctx.fillStyle = b.enabled ? b.color : '#64748b';
+        ctx.font = `bold ${Math.round(9.5 * scale)}px Consolas, monospace`;
+        ctx.textAlign = 'center';
+        const valY = Math.max(barTop + 11, barBottom - (b.pct / 100) * barMaxH - 4);
+        ctx.fillText(`${b.pct.toFixed(0)}%`, bx + bw * 0.5, valY);
+
+        // 下ラベル
+        ctx.fillStyle = b.enabled ? '#e2e8f0' : '#64748b';
+        ctx.font = `bold ${Math.round(9.5 * scale)}px sans-serif`;
+        ctx.fillText(b.label, bx + bw * 0.5, barBottom + Math.round(13 * scale));
+      });
+
+      // 区切り線
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(barAreaW + 2, 8);
+      ctx.lineTo(barAreaW + 2, H - 8);
+      ctx.stroke();
+
+      // --- 右側：エネルギー変化グラフ（折れ線：横軸＝距離 または 時間） ---
+      const gx0 = barAreaW + Math.round(32 * scale);
+      const gx1 = W - 12;
+      const gy0 = padT;
+      const gy1 = barBottom;
+      const gw = Math.max(60, gx1 - gx0);
+      const gh = Math.max(40, gy1 - gy0);
+
+      // グリッドと縦軸ラベル (0%, 50%, 100%)
+      ctx.font = `${Math.round(9.5 * scale)}px Consolas, monospace`;
+      ctx.textAlign = 'right';
+      [0, 50, 100].forEach(pct => {
+        const y = gy1 - (pct / 100) * gh;
+        ctx.strokeStyle = pct === 0 || pct === 100 ? 'rgba(148, 163, 184, 0.35)' : 'rgba(148, 163, 184, 0.16)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(gx0, y);
+        ctx.lineTo(gx1, y);
+        ctx.stroke();
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(`${pct}%`, gx0 - 4, y + 3);
+      });
+
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(gx0, gy0);
+      ctx.lineTo(gx0, gy1);
+      ctx.lineTo(gx1, gy1);
+      ctx.stroke();
+
+      const isDistAxis = state.energyAxis === 'dist';
+      const maxAxisVal = isDistAxis ? Math.max(1, phys.floorDistCm) : Math.max(0.1, phys.maxTime);
+
+      // 実験1のとき B点（斜面下端）と C点（摩擦切替位置）のガイド線を表示
+      if (phys.mode === 1 && phys.flatLenCm > 0) {
+        const bVal = isDistAxis ? phys.slopeDistCm : phys.slopeTime;
+        if (bVal > 0 && bVal < maxAxisVal) {
+          const bx = gx0 + (bVal / maxAxisVal) * gw;
+          ctx.strokeStyle = 'rgba(52, 211, 153, 0.45)';
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.moveTo(bx, gy0);
+          ctx.lineTo(bx, gy1);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#34d399';
+          ctx.font = 'bold 9.5px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('B(水平へ)', bx, gy0 - 5);
+        }
+
+        const cVal = isDistAxis ? (phys.slopeDistCm + phys.flat1LenCm) : (phys.slopeTime + phys.flat1Time);
+        if (phys.flatChangeCm > 0 && phys.flatChangeCm < phys.flatLenCm && cVal > 0 && cVal < maxAxisVal) {
+          const cx = gx0 + (cVal / maxAxisVal) * gw;
+          ctx.strokeStyle = 'rgba(251, 146, 60, 0.5)';
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.moveTo(cx, gy0);
+          ctx.lineTo(cx, gy1);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#fb923c';
+          ctx.font = 'bold 9.5px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('C(μ₂へ)', cx, gy0 - 5);
+        }
+      }
+
+      // サンプル点を作成して Ep, Ek, Em 曲線を描画（B点・C点の折れ目も正確に含める）
+      const N = 100;
+      const uList = [];
+      for (let i = 0; i <= N; i++) uList.push(i / N);
+      if (phys.mode === 1 && phys.flatLenCm > 0) {
+        const uB = (isDistAxis ? phys.slopeDistCm : phys.slopeTime) / maxAxisVal;
+        const uC = (isDistAxis ? (phys.slopeDistCm + phys.flat1LenCm) : (phys.slopeTime + phys.flat1Time)) / maxAxisVal;
+        if (uB > 0 && uB < 1) uList.push(uB);
+        if (uC > 0 && uC < 1) uList.push(uC);
+      }
+      uList.sort((a, b) => a - b);
+
+      const pts = uList.map((u) => {
+        const px = gx0 + u * gw;
+        let eSample;
+        if (isDistAxis) {
+          const xSample = u * maxAxisVal;
+          eSample = calcEnergyAtDistance(xSample, phys);
+        } else {
+          const tSample = u * maxAxisVal;
+          const kSample = getKinematicsAtTime(tSample, phys);
+          eSample = calcEnergyPercent(kSample.x, tSample === 0 ? 0 : kSample.v, phys);
+        }
+        return {
+          px,
+          yEp: gy1 - (eSample.epPct / 100) * gh,
+          yEk: gy1 - (eSample.ekPct / 100) * gh,
+          yEm: gy1 - (eSample.emPct / 100) * gh
+        };
+      });
+
+      // 1. 力学的エネルギー Em = Ep + Ek (黄色の破線)
+      if (showEm) {
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 2.2;
+        ctx.setLineDash([5, 3]);
+        ctx.beginPath();
+        pts.forEach((p, i) => {
+          if (i === 0) ctx.moveTo(p.px, p.yEm);
+          else ctx.lineTo(p.px, p.yEm);
+        });
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // 2. 位置エネルギー Ep (青の実線)
+      if (showEp) {
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2.3;
+        ctx.beginPath();
+        pts.forEach((p, i) => {
+          if (i === 0) ctx.moveTo(p.px, p.yEp);
+          else ctx.lineTo(p.px, p.yEp);
+        });
+        ctx.stroke();
+      }
+
+      // 3. 運動エネルギー Ek (緑の実線)
+      if (showEk) {
+        ctx.strokeStyle = '#34d399';
+        ctx.lineWidth = 2.3;
+        ctx.beginPath();
+        pts.forEach((p, i) => {
+          if (i === 0) ctx.moveTo(p.px, p.yEk);
+          else ctx.lineTo(p.px, p.yEk);
+        });
+        ctx.stroke();
+      }
+
+      // 現在位置の縦カーソル線とドット
+      const curVal = isDistAxis ? kin.x : kin.t;
+      const curU = Math.max(0, Math.min(1, curVal / maxAxisVal));
+      const curPx = gx0 + curU * gw;
+
+      ctx.strokeStyle = 'rgba(248, 250, 252, 0.55)';
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(curPx, gy0);
+      ctx.lineTo(curPx, gy1);
+      ctx.stroke();
+
+      const drawCurDot = (pct, color) => {
+        const py = gy1 - (pct / 100) * gh;
+        ctx.fillStyle = color;
+        ctx.strokeStyle = '#090d16';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(curPx, py, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      };
+
+      if (showEm) drawCurDot(curE.emPct, '#fbbf24');
+      if (showEp) drawCurDot(curE.epPct, '#38bdf8');
+      if (showEk) drawCurDot(curE.ekPct, '#34d399');
+
+      // 横軸ラベル
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '9.5px Consolas, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('A(0)', gx0, gy1 + 13);
+      ctx.textAlign = 'center';
+      ctx.fillText(
+        isDistAxis ? `移動距離 x (${kin.x.toFixed(0)}/${phys.floorDistCm.toFixed(0)}cm)` : `経過時間 t (${kin.t.toFixed(2)}/${phys.maxTime.toFixed(2)}s)`,
+        (gx0 + gx1) * 0.5,
+        gy1 + 23
+      );
+      ctx.textAlign = 'right';
+      ctx.fillText(isDistAxis ? `${phys.floorDistCm.toFixed(0)}cm` : `${phys.maxTime.toFixed(2)}s`, gx1, gy1 + 13);
+      ctx.textAlign = 'left';
+    }
+
+    function updateHudAndHeader(pSlope, kSlope, pFree, kFree) {
+      const hud = document.getElementById('hudContainer');
+      const tapeTitle = document.getElementById('tapeHeaderTitle');
+      const tapeLegend = document.getElementById('tapeLegend');
+      const dps = state.timerHz / 10;
+
+      tapeLegend.innerHTML = `
+        <span><i class="legend-dot" style="background:#ef4444;"></i>${dps}打点（0.1秒）ごとの区切り [${state.timerHz}Hz]</span>
+        <span><i class="legend-dot" style="background:#f8fafc;"></i>1/${state.timerHz}秒ごとの打点</span>
+      `;
+
+      if (state.expMode === 3) {
+        const curTime = (state.currentDot / state.timerHz).toFixed(2);
+        hud.innerHTML = `
+          <div class="hud-card">
+            <div class="hud-label">タイマー / 共通高さ(h)</div>
+            <div class="hud-val" style="color:#fbbf24;">${state.timerHz}Hz / h=${state.heightCm.toFixed(0)}cm</div>
+          </div>
+          <div class="hud-card">
+            <div class="hud-label">経過時間 (t)</div>
+            <div class="hud-val">${curTime} s</div>
+          </div>
+          <div class="hud-card" style="border-color:rgba(59,130,246,0.45);">
+            <div class="hud-label" style="color:#60a5fa;">📘 斜面 (${state.angleDeg.toFixed(0)}°) 距離 / 速さ</div>
+            <div class="hud-val" style="color:#60a5fa;">${kSlope.x.toFixed(1)}/${pSlope.floorDistCm.toFixed(0)}cm ｜ ${kSlope.v.toFixed(0)}cm/s</div>
+          </div>
+          <div class="hud-card" style="border-color:rgba(249,115,22,0.45);">
+            <div class="hud-label" style="color:#fb923c;">📙 自由落下 (90°) 距離 / 速さ</div>
+            <div class="hud-val" style="color:#fb923c;">${kFree.x.toFixed(1)}/${pFree.floorDistCm.toFixed(0)}cm ｜ ${kFree.v.toFixed(0)}cm/s</div>
+          </div>
+        `;
+        tapeTitle.innerHTML = `
+          📏 <strong>リアルタイム記録テープ比較 [${state.timerHz}Hz：${dps}打点＝0.1秒ごと]</strong>
+          <span style="font-weight:400; color:#94a3b8; margin-left:8px;">
+            （上段：📘 実験1 斜面 ／ 下段：📙 実験2 自由落下 ※同一縮尺）
+          </span>
+        `;
+      } else {
+        const phys = state.expMode === 1 ? pSlope : pFree;
+        const kin = state.expMode === 1 ? kSlope : kFree;
+        const dotInt = Math.floor(kin.d);
+        const hText = phys.mode === 1 ? `${phys.heightCm.toFixed(0)}cm` : formatHeight(phys.heightCm).replace(' ', '');
+        const flatSummary = phys.flatLenCm > 0
+          ? `水平=${phys.flatLenCm.toFixed(0)}cm(μ₁=${phys.frictionMu1.toFixed(2)}→${phys.flatChangeCm.toFixed(0)}cm〜μ₂=${phys.frictionMu2.toFixed(2)})`
+          : `水平=0cm`;
+        const modeTxt = phys.mode === 1
+          ? `h=${hText} / θ=${phys.angleDeg.toFixed(0)}° / ${flatSummary}`
+          : `h=${hText} / 自由落下(90°)`;
+        const modeColor = phys.mode === 1 ? '#60a5fa' : '#fb923c';
+        const distTxt = isFreeMeterMode()
+          ? `${(kin.x / 100).toFixed(2)} / ${(phys.floorDistCm / 100).toFixed(1)} m`
+          : `${kin.x.toFixed(1)} / ${phys.floorDistCm.toFixed(1)} cm`;
+        const curMu = kin.currentMu ?? 0;
+        const curFlatDL = kin.flatZone === 2 ? phys.flat2DL : phys.flat1DL;
+        const zoneTag = kin.flatZone === 2 ? '後半μ₂' : '前半μ₁';
+        const curDLTxt = (phys.mode === 1 && kin.onFlat)
+          ? (curMu > 0 ? `${curFlatDL.toFixed(2)} cm (${zoneTag}減速)` : `±0.00 cm (${zoneTag}等速)`)
+          : `+${phys.dL.toFixed(2)} cm`;
+
+        hud.innerHTML = `
+          <div class="hud-card">
+            <div class="hud-label">条件 (高さ / 角度 / 水平面・摩擦)</div>
+            <div class="hud-val" style="color:${modeColor}; font-size:0.92rem;">${modeTxt}</div>
+          </div>
+          <div class="hud-card">
+            <div class="hud-label">経過時間 (t)</div>
+            <div class="hud-val">${kin.t.toFixed(2)} s</div>
+          </div>
+          <div class="hud-card">
+            <div class="hud-label">打点数 (${state.timerHz}Hz)</div>
+            <div class="hud-val" style="color:#38bdf8;">${dotInt} / ${Math.floor(phys.maxDotFloat)} 打点</div>
+          </div>
+          <div class="hud-card">
+            <div class="hud-label">現在の速さ (v)</div>
+            <div class="hud-val" style="color:#34d399;">${kin.v.toFixed(1)} cm/s</div>
+          </div>
+          <div class="hud-card">
+            <div class="hud-label">移動距離 / 停止・終端まで</div>
+            <div class="hud-val">${distTxt}</div>
+          </div>
+          <div class="hud-card">
+            <div class="hud-label">0.1秒(${dps}打点)ごとの変化</div>
+            <div class="hud-val" style="color:#f472b6;">${curDLTxt}</div>
+          </div>
+        `;
+        tapeTitle.innerHTML = `
+          📏 <strong>リアルタイム記録テープ [${state.timerHz}Hz：1秒間に${state.timerHz}打点 ／ ${dps}打点＝0.1秒ごと]</strong>
+          <span style="font-weight:400; color:#94a3b8; margin-left:8px;">
+            （上段：打点ヘッド直下の拡大リアルタイム表示 ／ 下段：${dps}打点ごとに色分けされた全体テープ）
+          </span>
+        `;
+      }
+    }
+
+    // 残像のスクリーン座標を登録するヘルパー
+    function registerSlopeGhostHitBox(rampLeftX, rampLeftY, rad, localX, localY, radius, stripIndex, maxStripIndex) {
+      const cosR = Math.cos(-rad);
+      const sinR = Math.sin(-rad);
+      const screenX = rampLeftX + localX * cosR - localY * sinR;
+      const screenY = rampLeftY + localX * sinR + localY * cosR;
+      ghostHitBoxes.push({
+        modeType: 1,
+        stripIndex,
+        maxStripIndex,
+        screenX,
+        screenY,
+        radius
+      });
+    }
+
+    function registerFreeGhostHitBox(screenX, screenY, radius, stripIndex, maxStripIndex) {
+      ghostHitBoxes.push({
+        modeType: 2,
+        stripIndex,
+        maxStripIndex,
+        screenX,
+        screenY,
+        radius
+      });
+    }
+
+    // =========================================================
+    // 1C. 斜面と自由落下の並べて同時表示
+    // =========================================================
+    function drawSideBySideStageAutoFit(pSlope, kSlope, pFree, kFree) {
+      const rect = document.getElementById('simStage').getBoundingClientRect();
+      const W = rect.width;
+      const H = rect.height;
+      const ctx = simCtx;
+      ctx.clearRect(0, 0, W, H);
+
+      const padTop = 80;
+      const padBottom = 52;
+      const floorY = H - padBottom;
+      const availH = Math.max(130, floorY - padTop);
+
+      const splitX = W * 0.64;
+      const leftPadL = 55;
+      const leftPadR = 55;
+      const availWLeft = Math.max(180, splitX - leftPadL - leftPadR);
+
+      const rad = pSlope.rad;
+      const topApparatusPx = 96;
+      const dps = pSlope.dotsPerStrip;
+
+      const maxTravelByW = (availWLeft / Math.cos(rad)) - topApparatusPx;
+      const maxTravelByH = ((availH - 25) / Math.sin(rad)) - topApparatusPx;
+      const travelPx = Math.max(70, Math.min(maxTravelByW, maxTravelByH));
+
+      const pxPerCm = travelPx / pSlope.floorDistCm;
+      const heightPx = pSlope.heightCm * pxPerCm;
+      const pointAY = floorY - heightPx;
+
+      drawMetricGrid(ctx, W, H, leftPadL, floorY, pxPerCm);
+
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(20, floorY, W - 40, 28);
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(20, floorY);
+      ctx.lineTo(W - 20, floorY);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      ctx.moveTo(splitX, padTop - 10);
+      ctx.lineTo(splitX, floorY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 左エリア：実験1（斜面）
+      const rampLenPx = travelPx + topApparatusPx;
+      const totalHorizPx = rampLenPx * Math.cos(rad);
+      const rampLeftX = leftPadL + (availWLeft - totalHorizPx) * 0.45;
+      const rampLeftY = floorY;
+      const pointASlopeX = rampLeftX + travelPx * Math.cos(rad);
+
+      const blockW = Math.max(32, Math.min(60, totalHorizPx * 0.12));
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 2;
+      ctx.fillRect(pointASlopeX - blockW * 0.5, pointAY, blockW, floorY - pointAY);
+      ctx.strokeRect(pointASlopeX - blockW * 0.5, pointAY, blockW, floorY - pointAY);
+
+      const arcR = Math.min(75, travelPx * 0.28);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(rampLeftX, rampLeftY, arcR, -rad, 0);
+      ctx.stroke();
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 12px Consolas, sans-serif';
+      ctx.fillText(`θ=${pSlope.angleDeg.toFixed(0)}°`, rampLeftX + arcR + 6, rampLeftY - 6);
+
+      ctx.save();
+      ctx.translate(rampLeftX, rampLeftY);
+      ctx.rotate(-rad);
+
+      ctx.fillStyle = '#334155';
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2;
+      ctx.fillRect(0, -10, rampLenPx, 10);
+      ctx.strokeRect(0, -10, rampLenPx, 10);
+
+      const cartLenPx = 48;
+      const cartHalf = cartLenPx / 2;
+      const startCenterX = travelPx + cartHalf;
+
+      const timerX = travelPx + cartLenPx + 12;
+      ctx.fillStyle = '#475569';
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 2;
+      ctx.fillRect(timerX, -30, 38, 20);
+      ctx.strokeRect(timerX, -30, 38, 20);
+
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.arc(travelPx, -10, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText('A', travelPx - 12, -16);
+
+      if (document.getElementById('chkStrobe').checked && kSlope.d > 0) {
+        const maxStrip = Math.floor(kSlope.d / dps);
+        for (let s = 0; s <= maxStrip; s++) {
+          const kg = getAtDot(s * dps, pSlope);
+          const gx = startCenterX - kg.x * pxPerCm;
+          const isHovered = state.hoveredGhost && state.hoveredGhost.modeType === 1 && state.hoveredGhost.stripIndex === s;
+          const isPopup = state.popupGhost && state.popupGhost.modeType === 1 && state.popupGhost.stripIndex === s;
+          drawCartOnSlope(ctx, gx, cartHalf, true, s, isHovered || isPopup);
+          registerSlopeGhostHitBox(rampLeftX, rampLeftY, rad, gx, -26, 26, s, maxStrip);
+        }
+      }
+
+      const cartCenterX = startCenterX - kSlope.x * pxPerCm;
+
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(cartCenterX + cartHalf, -21);
+      ctx.lineTo(timerX + 38, -21);
+      ctx.stroke();
+
+      const maxDotSlope = Math.floor(kSlope.d);
+      for (let d = 0; d <= maxDotSlope; d++) {
+        const kd = getAtDot(d, pSlope);
+        const dotPos = cartCenterX + cartHalf + (kSlope.x - kd.x) * pxPerCm;
+        if (dotPos <= timerX + 36) {
+          const isCut = d % dps === 0;
+          ctx.fillStyle = isCut ? '#ef4444' : '#090d16';
+          ctx.beginPath();
+          ctx.arc(dotPos, -21, isCut ? 2.4 : 1.6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      drawCartOnSlope(ctx, cartCenterX, cartHalf, false, 0, false);
+
+      if (document.getElementById('chkForces').checked) {
+        drawSlopeForces(ctx, cartCenterX, rad);
+      }
+
+      ctx.restore();
+
+      if (kSlope.hitFloor) {
+        ctx.fillStyle = '#60a5fa';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(`💥 床に到達！(v = ${pSlope.finalSpeed.toFixed(0)} cm/s, t = ${pSlope.maxTime.toFixed(2)} s)`, rampLeftX, floorY - 38);
+      }
+
+      // 右エリア：実験2（自由落下）
+      const freeCenterX = splitX + (W - splitX) * 0.48;
+      const vCartHalf = 22;
+      const startCenterY = pointAY - vCartHalf;
+      const topTimerY = startCenterY - vCartHalf - 18;
+
+      const matW = 100;
+      ctx.fillStyle = '#059669';
+      ctx.strokeStyle = '#34d399';
+      ctx.lineWidth = 2;
+      ctx.fillRect(freeCenterX - matW / 2, floorY, matW, 10);
+      ctx.strokeRect(freeCenterX - matW / 2, floorY, matW, 10);
+
+      const pillarX = freeCenterX - 58;
+      ctx.fillStyle = '#334155';
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 2;
+      ctx.fillRect(pillarX - 8, topTimerY - 12, 10, floorY - (topTimerY - 12));
+      ctx.strokeRect(pillarX - 8, topTimerY - 12, 10, floorY - (topTimerY - 12));
+
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(pillarX + 2, topTimerY - 5, 66, 9);
+      ctx.fillRect(freeCenterX - 20, topTimerY - 15, 40, 26);
+      ctx.strokeRect(freeCenterX - 20, topTimerY - 15, 40, 26);
+
+      if (document.getElementById('chkStrobe').checked && kFree.d > 0) {
+        const maxStrip = Math.floor(kFree.d / dps);
+        for (let s = 0; s <= maxStrip; s++) {
+          const kg = getAtDot(s * dps, pFree);
+          const gy = startCenterY + kg.x * pxPerCm;
+          const isHovered = state.hoveredGhost && state.hoveredGhost.modeType === 2 && state.hoveredGhost.stripIndex === s;
+          const isPopup = state.popupGhost && state.popupGhost.modeType === 2 && state.popupGhost.stripIndex === s;
+          drawVerticalCart(ctx, freeCenterX, gy, vCartHalf, true, s, kg.x, isHovered || isPopup);
+          registerFreeGhostHitBox(freeCenterX, gy, 24, s, maxStrip);
+        }
+      }
+
+      const curCenterY = startCenterY + kFree.x * pxPerCm;
+
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.moveTo(freeCenterX, topTimerY + 11);
+      ctx.lineTo(freeCenterX, curCenterY - vCartHalf);
+      ctx.stroke();
+
+      const maxDotFree = Math.floor(kFree.d);
+      for (let d = 0; d <= maxDotFree; d++) {
+        const kd = getAtDot(d, pFree);
+        const dotY = (curCenterY - vCartHalf) - (kFree.x - kd.x) * pxPerCm;
+        if (dotY >= topTimerY + 11) {
+          const isCut = d % dps === 0;
+          ctx.fillStyle = isCut ? '#ef4444' : '#090d16';
+          ctx.beginPath();
+          ctx.arc(freeCenterX, dotY, isCut ? 2.6 : 1.7, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      drawVerticalCart(ctx, freeCenterX, curCenterY, vCartHalf, false, 0, kFree.x, false);
+
+      if (document.getElementById('chkForces').checked) {
+        drawVectorArrow(ctx, freeCenterX, curCenterY, freeCenterX, curCenterY + 72, '#ef4444', 3.4);
+      }
+
+      if (kFree.hitFloor) {
+        ctx.fillStyle = '#fb923c';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(`💥 床に到達！(v = ${pFree.finalSpeed.toFixed(0)} cm/s, t = ${pFree.maxTime.toFixed(2)} s)`, freeCenterX - 95, floorY - 12);
+      }
+
+      // 共通の高さガイド線
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(pointASlopeX, pointAY);
+      ctx.lineTo(freeCenterX + 85, pointAY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const dimX = freeCenterX + 78;
+      drawDoubleArrow(ctx, dimX, pointAY, dimX, floorY, '#fbbf24', 2.0);
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 13px Consolas, sans-serif';
+      ctx.fillText(`共通の高さ`, dimX + 8, (pointAY + floorY) / 2 - 7);
+      ctx.fillText(`h = ${pSlope.heightCm.toFixed(0)} cm`, dimX + 8, (pointAY + floorY) / 2 + 11);
+    }
+
+    // =========================================================
+    // 1A. 実験1：斜面＋水平面 単体表示（自動縮尺フィット）
+    // =========================================================
+    function drawSlopeStageAutoFit(phys, kin) {
+      const rect = document.getElementById('simStage').getBoundingClientRect();
+      const W = rect.width;
+      const H = rect.height;
+      const ctx = simCtx;
+      ctx.clearRect(0, 0, W, H);
+
+      const padTop = 78;
+      const padBottom = 56;
+      const padLeft = 75;
+      const padRight = 135;
+      const availW = Math.max(200, W - padLeft - padRight);
+      const availH = Math.max(140, H - padTop - padBottom);
+
+      const floorY = H - padBottom;
+      const rad = phys.rad;
+      const topApparatusPx = 108;
+      const cartLenPx = 54;
+      const cartHalf = cartLenPx / 2;
+      const leftCartMarginPx = phys.flatLenCm > 0 ? cartLenPx + 16 : 20;
+      const dps = phys.dotsPerStrip;
+
+      // 斜面＋水平面の全体が画面にぴったり収まる pxPerCm を算出
+      const horizCmTotal = phys.flatLenCm + phys.slopeDistCm * Math.cos(rad);
+      const vertCmTotal = phys.slopeDistCm * Math.sin(rad);
+
+      const pxPerCmW = (availW - leftCartMarginPx - topApparatusPx * Math.cos(rad)) / Math.max(10, horizCmTotal);
+      const pxPerCmH = (availH - topApparatusPx * Math.sin(rad)) / Math.max(10, vertCmTotal);
+      const pxPerCm = Math.max(0.15, Math.min(pxPerCmW, pxPerCmH));
+
+      const slopeTravelPx = phys.slopeDistCm * pxPerCm;
+      const rampLenPx = slopeTravelPx + topApparatusPx;
+      const flatLenPx = phys.flatLenCm * pxPerCm;
+
+      const totalHorizSlopePx = rampLenPx * Math.cos(rad);
+      const totalDiagramW = leftCartMarginPx + flatLenPx + totalHorizSlopePx;
+
+      const flatLeftX = padLeft + (availW - totalDiagramW) * 0.5 + leftCartMarginPx;
+      const rampLeftX = flatLeftX + flatLenPx; // 斜面下端（B点・水平面との接続点）
+      const rampLeftY = floorY;
+
+      const pointAScreenX = rampLeftX + slopeTravelPx * Math.cos(rad);
+      const pointAScreenY = rampLeftY - slopeTravelPx * Math.sin(rad);
+
+      drawMetricGrid(ctx, W, H, rampLeftX, floorY, pxPerCm);
+
+      // 床ベース
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(20, floorY, W - 40, 30);
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(20, floorY);
+      ctx.lineTo(W - 40, floorY);
+      ctx.stroke();
+
+      // 斜面の下に続く水平な平面の描画（前半 B〜C：μ₁ ／ 後半 C〜終端：μ₂）
+      if (phys.flatLenCm > 0) {
+        const flat1Px = phys.flat1LenCm * pxPerCm;
+        const changeScreenX = rampLeftX - flat1Px; // C点（摩擦切替位置）
+        const boardLeftEdgeX = flatLeftX - cartLenPx;
+
+        // 区間描画ヘルパー（xLeft〜xRight の水平板＋摩擦ハッチング）
+        const drawFlatZoneBoard = (xLeft, xRight, mu, strokeCol, fillBaseCol, hatchRgb) => {
+          const w = xRight - xLeft;
+          if (w <= 0.5) return;
+          ctx.fillStyle = mu > 0 ? fillBaseCol : '#334155';
+          ctx.strokeStyle = mu > 0 ? strokeCol : '#34d399';
+          ctx.lineWidth = 2;
+          ctx.fillRect(xLeft, floorY - 10, w, 10);
+          ctx.strokeRect(xLeft, floorY - 10, w, 10);
+
+          if (mu > 0) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(xLeft, floorY - 10, w, 10);
+            ctx.clip();
+            const alpha = Math.min(0.88, 0.25 + mu * 1.15);
+            ctx.strokeStyle = `rgba(${hatchRgb}, ${alpha})`;
+            ctx.lineWidth = 1.6;
+            const hatchStep = Math.max(5, 14 - mu * 16);
+            for (let hx = xLeft - 12; hx < xLeft + w + 12; hx += hatchStep) {
+              ctx.beginPath();
+              ctx.moveTo(hx, floorY);
+              ctx.lineTo(hx + 6, floorY - 10);
+              ctx.stroke();
+            }
+            ctx.restore();
+          }
+        };
+
+        // 後半区間（C点より左：boardLeftEdgeX 〜 changeScreenX, 摩擦係数 μ₂）
+        drawFlatZoneBoard(
+          boardLeftEdgeX,
+          changeScreenX,
+          phys.frictionMu2,
+          '#fb923c',
+          '#42282c',
+          '251, 146, 60'
+        );
+
+        // 前半区間（B点〜C点：changeScreenX 〜 rampLeftX, 摩擦係数 μ₁）
+        drawFlatZoneBoard(
+          changeScreenX,
+          rampLeftX,
+          phys.frictionMu1,
+          '#f472b6',
+          '#3b2d3f',
+          '244, 114, 182'
+        );
+
+        // 水平面の目盛り
+        const flatTickStepCm = phys.flatLenCm > 200 ? 50 : phys.flatLenCm > 80 ? 20 : 10;
+        for (let cm = 0; cm <= phys.flatLenCm; cm += flatTickStepCm) {
+          const tx = rampLeftX - cm * pxPerCm;
+          ctx.strokeStyle = cm === 0 ? '#34d399' : '#cbd5e1';
+          ctx.lineWidth = 1.3;
+          ctx.beginPath();
+          ctx.moveTo(tx, floorY - 10);
+          ctx.lineTo(tx, floorY - 2);
+          ctx.stroke();
+        }
+
+        // B点（斜面下端・水平面始点）マーカー
+        ctx.fillStyle = '#34d399';
+        ctx.beginPath();
+        ctx.arc(rampLeftX, floorY - 10, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText('B', rampLeftX - 4, floorY - 15);
+
+        // C点（摩擦係数の切替位置）マーカー
+        if (phys.flatChangeCm > 0 && phys.flatChangeCm < phys.flatLenCm) {
+          ctx.strokeStyle = '#fb923c';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 2]);
+          ctx.beginPath();
+          ctx.moveTo(changeScreenX, floorY - 28);
+          ctx.lineTo(changeScreenX, floorY + 12);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = '#fb923c';
+          ctx.beginPath();
+          ctx.arc(changeScreenX, floorY - 10, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.font = 'bold 12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`C (${phys.flatChangeCm.toFixed(0)}cm)`, changeScreenX, floorY - 31);
+          ctx.textAlign = 'left';
+        }
+
+        // 水平面の前半・後半の寸法と摩擦係数ラベル
+        const flatDimY = floorY + 16;
+        if (phys.flatChangeCm > 0 && phys.flatChangeCm < phys.flatLenCm) {
+          // 前半 B〜C
+          drawDoubleArrow(ctx, changeScreenX, flatDimY, rampLeftX, flatDimY, '#f472b6', 1.8);
+          ctx.fillStyle = '#f472b6';
+          ctx.font = 'bold 11.5px Consolas, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(
+            `前半 ${phys.flat1LenCm.toFixed(0)}cm (μ₁=${phys.frictionMu1.toFixed(2)})`,
+            (changeScreenX + rampLeftX) * 0.5,
+            flatDimY + 14
+          );
+
+          // 後半 C〜終端
+          drawDoubleArrow(ctx, flatLeftX, flatDimY, changeScreenX, flatDimY, '#fb923c', 1.8);
+          ctx.fillStyle = '#fb923c';
+          ctx.fillText(
+            `後半 ${phys.flat2LenCm.toFixed(0)}cm (μ₂=${phys.frictionMu2.toFixed(2)})`,
+            (flatLeftX + changeScreenX) * 0.5,
+            flatDimY + 14
+          );
+          ctx.textAlign = 'left';
+        } else {
+          const singleMu = phys.flatChangeCm <= 0 ? phys.frictionMu2 : phys.frictionMu1;
+          const col = singleMu > 0 ? '#f472b6' : '#34d399';
+          drawDoubleArrow(ctx, flatLeftX, flatDimY, rampLeftX, flatDimY, col, 1.8);
+          ctx.fillStyle = col;
+          ctx.font = 'bold 12px Consolas, sans-serif';
+          ctx.textAlign = 'center';
+          const muTxt = singleMu > 0 ? `摩擦係数 μ = ${singleMu.toFixed(2)}` : `摩擦なし (μ = 0.00)`;
+          ctx.fillText(
+            `水平面 ${phys.flatLenCm.toFixed(0)} cm （${muTxt}）`,
+            (flatLeftX + rampLeftX) * 0.5,
+            flatDimY + 15
+          );
+          ctx.textAlign = 'left';
+        }
+      }
+
+      // 斜面を支える支柱ブロック
+      const blockW = Math.max(36, Math.min(70, totalHorizSlopePx * 0.12));
+      const blockX = pointAScreenX - blockW * 0.5;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 2;
+      ctx.fillRect(blockX, pointAScreenY, blockW, floorY - pointAScreenY);
+      ctx.strokeRect(blockX, pointAScreenY, blockW, floorY - pointAScreenY);
+
+      // A点の高さ寸法線
+      const dimX = pointAScreenX + 42;
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(pointAScreenX, pointAScreenY);
+      ctx.lineTo(dimX + 8, pointAScreenY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      drawDoubleArrow(ctx, dimX, pointAScreenY, dimX, floorY, '#fbbf24', 2.2);
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 13px Consolas, sans-serif';
+      ctx.fillText(`A点の高さ`, dimX + 10, (pointAScreenY + floorY) / 2 - 8);
+      ctx.font = 'bold 15px Consolas, sans-serif';
+      ctx.fillText(`h = ${phys.heightCm.toFixed(0)} cm`, dimX + 10, (pointAScreenY + floorY) / 2 + 12);
+
+      // 斜面角度アーク
+      const arcR = Math.min(85, slopeTravelPx * 0.28);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(rampLeftX, rampLeftY, arcR, -rad, 0);
+      ctx.stroke();
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 13px Consolas, sans-serif';
+      ctx.fillText(`θ = ${phys.angleDeg.toFixed(0)}°`, rampLeftX + arcR + 8, rampLeftY - 8);
+
+      // --- 斜面座標系での描画 ---
+      ctx.save();
+      ctx.translate(rampLeftX, rampLeftY);
+      ctx.rotate(-rad);
+
+      ctx.fillStyle = '#334155';
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2;
+      ctx.fillRect(0, -10, rampLenPx, 10);
+      ctx.strokeRect(0, -10, rampLenPx, 10);
+
+      const tickStepCm = phys.slopeDistCm > 300 ? 50 : phys.slopeDistCm > 120 ? 20 : 10;
+      for (let cm = 0; cm <= phys.slopeDistCm; cm += tickStepCm) {
+        const tx = slopeTravelPx - cm * pxPerCm;
+        ctx.strokeStyle = cm === 0 ? '#f97316' : '#cbd5e1';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(tx, -10);
+        ctx.lineTo(tx, -2);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 12px Consolas, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`斜面距離 L₁ = ${phys.slopeDistCm.toFixed(1)} cm`, slopeTravelPx * 0.5, 18);
+      ctx.textAlign = 'left';
+
+      const startCenterX = slopeTravelPx + cartHalf;
+
+      const timerX = slopeTravelPx + cartLenPx + 14;
+      ctx.fillStyle = '#475569';
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 2;
+      ctx.fillRect(timerX, -32, 42, 22);
+      ctx.strokeRect(timerX, -32, 42, 22);
+
+      const hammerOsc = state.playing ? Math.sin(state.currentDot * Math.PI * 2) * 3.5 : 0;
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(timerX + 16, -44 + hammerOsc, 8, 14);
+      ctx.fillRect(timerX + 10, -48 + hammerOsc, 20, 4);
+
+      ctx.fillStyle = '#f97316';
+      ctx.beginPath();
+      ctx.arc(slopeTravelPx, -10, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillText('A', slopeTravelPx - 12, -18);
+
+      // 残像のうち「斜面上にあるもの」を描画
+      if (document.getElementById('chkStrobe').checked && kin.d > 0) {
+        const maxStrip = Math.floor(kin.d / dps);
+        for (let s = 0; s <= maxStrip; s++) {
+          const kGhost = getAtDot(s * dps, phys);
+          if (!kGhost.onFlat) {
+            const gx = startCenterX - kGhost.x * pxPerCm;
+            const isHovered = state.hoveredGhost && state.hoveredGhost.modeType === 1 && state.hoveredGhost.stripIndex === s;
+            const isPopup = state.popupGhost && state.popupGhost.modeType === 1 && state.popupGhost.stripIndex === s;
+            drawCartOnSlope(ctx, gx, cartHalf, true, s, isHovered || isPopup);
+            registerSlopeGhostHitBox(rampLeftX, rampLeftY, rad, gx, -26, 28, s, maxStrip);
+          }
+        }
+      }
+
+      // 記録テープの斜面区間を描画
+      const slopeTapeStartLocalX = kin.onFlat ? 0 : (startCenterX - kin.x * pxPerCm + cartHalf);
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.moveTo(slopeTapeStartLocalX, -23);
+      ctx.lineTo(timerX + 42, -23);
+      ctx.stroke();
+
+      // 斜面区間にある打点を描画
+      const maxDotInt = Math.floor(kin.d);
+      const flatDistNowCm = Math.max(0, kin.x - phys.slopeDistCm);
+      for (let d = 0; d <= maxDotInt; d++) {
+        const kd = getAtDot(d, phys);
+        const distFromCartCm = kin.x - kd.x;
+        if (distFromCartCm >= flatDistNowCm) {
+          const distUpSlopeCm = distFromCartCm - flatDistNowCm;
+          const dotPosOnRamp = (kin.onFlat ? 0 : (startCenterX - kin.x * pxPerCm + cartHalf)) + distUpSlopeCm * pxPerCm;
+          if (dotPosOnRamp <= timerX + 40) {
+            const isCut = d % dps === 0;
+            ctx.fillStyle = isCut ? '#ef4444' : '#090d16';
+            ctx.beginPath();
+            ctx.arc(dotPosOnRamp, -23, isCut ? 2.6 : 1.7, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+
+      // 台車が斜面上にいる場合の描画
+      if (!kin.onFlat) {
+        const cartCenterX = startCenterX - kin.x * pxPerCm;
+        drawCartOnSlope(ctx, cartCenterX, cartHalf, false, 0, false);
+        if (document.getElementById('chkForces').checked) {
+          drawSlopeForces(ctx, cartCenterX, rad);
+        }
+      }
+
+      ctx.restore();
+
+      // --- 水平面座標系での残像・テープ・台車・力の描画 ---
+      ctx.save();
+      ctx.translate(rampLeftX, rampLeftY);
+
+      if (document.getElementById('chkStrobe').checked && kin.d > 0) {
+        const maxStrip = Math.floor(kin.d / dps);
+        for (let s = 0; s <= maxStrip; s++) {
+          const kGhost = getAtDot(s * dps, phys);
+          if (kGhost.onFlat) {
+            const flatGhostPx = (kGhost.x - phys.slopeDistCm) * pxPerCm;
+            const gx = -flatGhostPx - cartHalf;
+            const isHovered = state.hoveredGhost && state.hoveredGhost.modeType === 1 && state.hoveredGhost.stripIndex === s;
+            const isPopup = state.popupGhost && state.popupGhost.modeType === 1 && state.popupGhost.stripIndex === s;
+            drawCartOnSlope(ctx, gx, cartHalf, true, s, isHovered || isPopup);
+            registerSlopeGhostHitBox(rampLeftX, rampLeftY, 0, gx, -26, 28, s, maxStrip);
+          }
+        }
+      }
+
+      if (kin.onFlat) {
+        const flatTravelNowPx = (kin.x - phys.slopeDistCm) * pxPerCm;
+        const cartCenterFlatX = -flatTravelNowPx - cartHalf;
+
+        // 水平面区間の記録テープ
+        ctx.strokeStyle = '#f8fafc';
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.moveTo(cartCenterFlatX + cartHalf, -23);
+        ctx.lineTo(0, -23);
+        ctx.stroke();
+
+        // 水平面区間にある打点を描画
+        for (let d = 0; d <= maxDotInt; d++) {
+          const kd = getAtDot(d, phys);
+          const distFromCartCm = kin.x - kd.x;
+          if (distFromCartCm <= flatDistNowCm) {
+            const dotFlatX = (cartCenterFlatX + cartHalf) + distFromCartCm * pxPerCm;
+            const isCut = d % dps === 0;
+            ctx.fillStyle = isCut ? '#ef4444' : '#090d16';
+            ctx.beginPath();
+            ctx.arc(dotFlatX, -23, isCut ? 2.6 : 1.7, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        drawCartOnSlope(ctx, cartCenterFlatX, cartHalf, false, 0, false);
+
+        if (document.getElementById('chkForces').checked) {
+          drawFlatForces(ctx, cartCenterFlatX, kin.currentMu ?? 0, kin.v);
+        }
+      }
+
+      ctx.restore();
+
+      if (kin.hitFloor) {
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = 'bold 14px sans-serif';
+        const endMsg = (phys.flatLenCm > 0 && phys.stopsOnFlat)
+          ? `🛑 摩擦により水平面上で停止！（水平面の走行距離 ${phys.flatTravelCm.toFixed(1)} cm） ※残像①〜をクリックすると力の図を表示`
+          : `💥 終端に到達！（終端速度 v = ${phys.finalSpeed.toFixed(1)} cm/s） ※残像①〜をクリックすると力の図を表示`;
+        ctx.fillText(endMsg, Math.max(24, flatLeftX - 20), floorY - 42);
+      }
+    }
+
+    // =========================================================
+    // 1B. 実験2：自由落下単体表示（自動縮尺フィット）
+    // =========================================================
+    function drawFreeFallStageAutoFit(phys, kin) {
+      const rect = document.getElementById('simStage').getBoundingClientRect();
+      const W = rect.width;
+      const H = rect.height;
+      const ctx = simCtx;
+      ctx.clearRect(0, 0, W, H);
+
+      const padTop = 82;
+      const padBottom = 52;
+      const floorY = H - padBottom;
+      const centerX = W * 0.5;
+      const dps = phys.dotsPerStrip;
+
+      const matH = 12;
+      const matTopY = floorY - matH;
+      const cartHalfLen = 26;
+      const topTimerMarginPx = 68;
+
+      const availFallPx = Math.max(90, (matTopY - padTop) - topTimerMarginPx);
+      const pxPerCm = availFallPx / phys.heightCm;
+
+      const startTipY = matTopY - availFallPx;
+      const startCenterY = startTipY - cartHalfLen;
+      const topTimerY = startCenterY - cartHalfLen - 22;
+
+      drawMetricGrid(ctx, W, H, centerX - 180, matTopY, pxPerCm);
+
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(30, floorY, W - 60, 28);
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(30, floorY);
+      ctx.lineTo(W - 30, floorY);
+      ctx.stroke();
+
+      const matW = 120;
+      ctx.fillStyle = '#059669';
+      ctx.strokeStyle = '#34d399';
+      ctx.lineWidth = 2;
+      ctx.fillRect(centerX - matW / 2, matTopY, matW, matH);
+      ctx.strokeRect(centerX - matW / 2, matTopY, matW, matH);
+
+      const pillarX = centerX - 68;
+      ctx.fillStyle = '#334155';
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 2;
+      ctx.fillRect(pillarX - 8, topTimerY - 14, 12, floorY - (topTimerY - 14));
+      ctx.strokeRect(pillarX - 8, topTimerY - 14, 12, floorY - (topTimerY - 14));
+
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(pillarX + 4, topTimerY - 6, 76, 10);
+      ctx.strokeRect(pillarX + 4, topTimerY - 6, 76, 10);
+
+      ctx.fillStyle = '#475569';
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 2;
+      ctx.fillRect(centerX - 24, topTimerY - 18, 48, 30);
+      ctx.strokeRect(centerX - 24, topTimerY - 18, 48, 30);
+
+      const hammerOsc = state.playing ? Math.sin(state.currentDot * Math.PI * 2) * 3.5 : 0;
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(centerX - 36 + hammerOsc, topTimerY - 6, 14, 6);
+
+      const dimX = centerX + 115;
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.4;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(centerX, startTipY);
+      ctx.lineTo(dimX + 8, startTipY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      drawDoubleArrow(ctx, dimX, startTipY, dimX, matTopY, '#fbbf24', 2.2);
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 14px Consolas, sans-serif';
+      ctx.fillText(`A点の高さ h = ${formatHeight(phys.heightCm)}`, dimX + 12, (startTipY + matTopY) / 2 + 5);
+
+      const stepCm = phys.heightCm > 1000 ? 200 : phys.heightCm > 400 ? 100 : phys.heightCm > 180 ? 50 : phys.heightCm > 120 ? 25 : phys.heightCm > 50 ? 10 : 5;
+      for (let cm = 0; cm <= phys.heightCm + 0.01; cm += stepCm) {
+        const yTick = startTipY + cm * pxPerCm;
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.moveTo(pillarX + 4, yTick);
+        ctx.lineTo(pillarX + 15, yTick);
+        ctx.stroke();
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '11px Consolas, monospace';
+        ctx.textAlign = 'right';
+        const tickLabel = isFreeMeterMode()
+          ? `${+(cm / 100).toFixed(2)}m`
+          : `${cm}cm`;
+        ctx.fillText(tickLabel, pillarX - 12, yTick + 4);
+      }
+      ctx.textAlign = 'left';
+
+      ctx.fillStyle = '#f97316';
+      ctx.beginPath();
+      ctx.arc(centerX - 34, startTipY, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText('A点', centerX - 62, startTipY + 4);
+
+      if (document.getElementById('chkStrobe').checked && kin.d > 0) {
+        const maxStrip = Math.floor(kin.d / dps);
+        for (let s = 0; s <= maxStrip; s++) {
+          const kGhost = getAtDot(s * dps, phys);
+          const gy = startCenterY + kGhost.x * pxPerCm;
+          const isHovered = state.hoveredGhost && state.hoveredGhost.modeType === 2 && state.hoveredGhost.stripIndex === s;
+          const isPopup = state.popupGhost && state.popupGhost.modeType === 2 && state.popupGhost.stripIndex === s;
+          drawVerticalCart(ctx, centerX, gy, cartHalfLen, true, s, kGhost.x, isHovered || isPopup);
+          registerFreeGhostHitBox(centerX, gy, 26, s, maxStrip);
+        }
+      }
+
+      const curCenterY = startCenterY + kin.x * pxPerCm;
+
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.moveTo(centerX, topTimerY + 12);
+      ctx.lineTo(centerX, curCenterY - cartHalfLen);
+      ctx.stroke();
+
+      const maxDotInt = Math.floor(kin.d);
+      for (let d = 0; d <= maxDotInt; d++) {
+        const kd = getAtDot(d, phys);
+        const distFromCart = kin.x - kd.x;
+        const dotY = (curCenterY - cartHalfLen) - distFromCart * pxPerCm;
+        if (dotY >= topTimerY + 12) {
+          const isCut = d % dps === 0;
+          ctx.fillStyle = isCut ? '#ef4444' : '#090d16';
+          ctx.beginPath();
+          ctx.arc(centerX, dotY, isCut ? 2.8 : 1.9, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      drawVerticalCart(ctx, centerX, curCenterY, cartHalfLen, false, 0, kin.x, false);
+
+      if (document.getElementById('chkForces').checked) {
+        drawVectorArrow(ctx, centerX, curCenterY, centerX, curCenterY + 76, '#ef4444', 3.6);
+        ctx.fillStyle = '#f87171';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText('重力 (100%)', centerX + 22, curCenterY + 46);
+      }
+
+      if (kin.hitFloor) {
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(`💥 床に到達！（終端速度 v = ${phys.finalSpeed.toFixed(1)} cm/s）`, centerX - 240, matTopY - 12);
+      }
+    }
+
+    function drawMetricGrid(ctx, W, H, originX, originY, pxPerCm) {
+      let gridCm = 10;
+      if (pxPerCm * 10 > 85) gridCm = 5;
+      if (pxPerCm * 10 < 22) gridCm = 25;
+      if (pxPerCm * 25 < 22) gridCm = 50;
+      if (pxPerCm * 50 < 22) gridCm = 100;
+      if (pxPerCm * 100 < 22) gridCm = 200;
+      if (pxPerCm * 200 < 22) gridCm = 500;
+
+      const stepPx = gridCm * pxPerCm;
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.08)';
+      ctx.lineWidth = 1;
+
+      for (let x = originX % stepPx; x < W; x += stepPx) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+      for (let y = originY % stepPx; y < H; y += stepPx) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+
+      const barX = W - 140;
+      const barY = H - 16;
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(barX, barY);
+      ctx.lineTo(barX + stepPx, barY);
+      ctx.moveTo(barX, barY - 4);
+      ctx.lineTo(barX, barY + 4);
+      ctx.moveTo(barX + stepPx, barY - 4);
+      ctx.lineTo(barX + stepPx, barY + 4);
+      ctx.stroke();
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 11px Consolas, sans-serif';
+      const scaleTxt = isFreeMeterMode() ? `${+(gridCm / 100).toFixed(2)} m` : `${gridCm} cm`;
+      ctx.fillText(`縮尺: ${scaleTxt}`, barX, barY - 7);
+    }
+
+    function drawDoubleArrow(ctx, x1, y1, x2, y2, color, width) {
+      drawVectorArrow(ctx, (x1 + x2) / 2, (y1 + y2) / 2, x2, y2, color, width);
+      drawVectorArrow(ctx, (x1 + x2) / 2, (y1 + y2) / 2, x1, y1, color, width);
+    }
+
+    function drawCartOnSlope(ctx, cx, halfLen, isGhost, stripNum, isHighlighted) {
+      ctx.save();
+      ctx.globalAlpha = isGhost ? (isHighlighted ? 0.85 : 0.32) : 1.0;
+
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      ctx.arc(cx - halfLen + 10, -15, 5, 0, Math.PI * 2);
+      ctx.arc(cx + halfLen - 10, -15, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = isGhost ? (isHighlighted ? '#fde047' : '#38bdf8') : '#2563eb';
+      ctx.strokeStyle = isHighlighted ? '#facc15' : '#93c5fd';
+      ctx.lineWidth = isHighlighted ? 2.8 : 2;
+      ctx.fillRect(cx - halfLen, -34, halfLen * 2, 16);
+      ctx.strokeRect(cx - halfLen, -34, halfLen * 2, 16);
+
+      if (isGhost && stripNum > 0) {
+        ctx.globalAlpha = 0.95;
+        ctx.fillStyle = isHighlighted ? '#fde047' : '#38bdf8';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.fillText(CIRCLED_NUMS[stripNum] || `(${stripNum})`, cx - 6, -40);
+      } else if (!isGhost) {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.fillText('台車', cx - 12, -22);
+      }
+      ctx.restore();
+    }
+
+    function drawVerticalCart(ctx, cx, cy, halfLen, isGhost, stripNum, distCm, isHighlighted) {
+      ctx.save();
+      ctx.globalAlpha = isGhost ? (isHighlighted ? 0.88 : 0.32) : 1.0;
+
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      ctx.arc(cx - 13, cy - 12, 4.5, 0, Math.PI * 2);
+      ctx.arc(cx - 13, cy + 12, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = isGhost ? (isHighlighted ? '#fde047' : '#fb923c') : '#ea580c';
+      ctx.strokeStyle = isHighlighted ? '#facc15' : '#fed7aa';
+      ctx.lineWidth = isHighlighted ? 2.8 : 2;
+      ctx.fillRect(cx - 10, cy - halfLen, 20, halfLen * 2);
+      ctx.strokeRect(cx - 10, cy - halfLen, 20, halfLen * 2);
+
+      if (isGhost && stripNum > 0) {
+        ctx.globalAlpha = 0.95;
+        ctx.fillStyle = isHighlighted ? '#fde047' : '#fdba74';
+        ctx.font = 'bold 11px Consolas, sans-serif';
+        const dTxt = isFreeMeterMode()
+          ? `${(distCm / 100).toFixed(2)}m`
+          : `${distCm.toFixed(1)}cm`;
+        ctx.fillText(`${CIRCLED_NUMS[stripNum] || stripNum} (${dTxt})`, cx + 16, cy + halfLen);
+      }
+      ctx.restore();
+    }
+
+    function drawSlopeForces(ctx, cartX, rad) {
+      const cx = cartX;
+      const cy = -26;
+      const mgLen = 72;
+      const fParallel = mgLen * Math.sin(rad);
+      const fPerp = mgLen * Math.cos(rad);
+
+      ctx.save();
+      ctx.translate(cx, cy);
+
+      ctx.strokeStyle = 'rgba(203, 213, 225, 0.45)';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(-fParallel, 0);
+      ctx.lineTo(-fParallel, fPerp);
+      ctx.lineTo(0, fPerp);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      drawVectorArrow(ctx, 0, 0, -fParallel, fPerp, '#94a3b8', 2.2);
+      drawVectorArrow(ctx, 0, 0, 0, fPerp, '#38bdf8', 2.0);
+      drawVectorArrow(ctx, 0, 0, -fParallel, 0, '#ef4444', 3.2);
+
+      ctx.restore();
+    }
+
+    function drawFlatForces(ctx, cartX, frictionMu, speed) {
+      const cx = cartX;
+      const cy = -26;
+      const mgLen = 62;
+
+      ctx.save();
+      ctx.translate(cx, cy);
+
+      // 垂直抗力（上向き）と重力（下向き）
+      drawVectorArrow(ctx, 0, 0, 0, -mgLen, '#10b981', 2.4);
+      drawVectorArrow(ctx, 0, 0, 0, mgLen, '#94a3b8', 2.4);
+
+      // 動摩擦力（運動と逆向き＝右向き）
+      if (frictionMu > 0 && speed > 0.5) {
+        const fFric = Math.max(16, mgLen * frictionMu);
+        drawVectorArrow(ctx, 0, 0, fFric, 0, '#ef4444', 3.4);
+      }
+
+      ctx.restore();
+    }
+
+    function drawVectorArrow(ctx, x1, y1, x2, y2, color, width) {
+      const head = 8;
+      const ang = Math.atan2(y2 - y1, x2 - x1);
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - head * Math.cos(ang - Math.PI / 6), y2 - head * Math.sin(ang - Math.PI / 6));
+      ctx.lineTo(x2 - head * Math.cos(ang + Math.PI / 6), y2 - head * Math.sin(ang + Math.PI / 6));
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // =========================================================
+    // 2. 記録テープ表示
+    // =========================================================
+    function drawSingleTapeStage(phys, kin) {
+      const rect = document.getElementById('tapeStage').getBoundingClientRect();
+      const W = rect.width;
+      const H = rect.height;
+      const ctx = tapeCtx;
+      ctx.clearRect(0, 0, W, H);
+
+      const circled = CIRCLED_NUMS.slice(1);
+      const dps = phys.dotsPerStrip;
+
+      const zoomY = 10;
+      const zoomH = 42;
+      const headX = W - 125;
+      const zoomPxPerCm = phys.mode === 2 ? 7.0 : 11.5;
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(16, zoomY, W - 32, zoomH);
+      ctx.strokeStyle = '#1e293b';
+      ctx.strokeRect(16, zoomY, W - 32, zoomH);
+
+      const pulledPx = kin.x * zoomPxPerCm;
+      const tapeLeftX = Math.max(20, headX - pulledPx);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(18, zoomY, W - 36, zoomH);
+      ctx.clip();
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(tapeLeftX, zoomY + 7, (W - 20) - tapeLeftX, zoomH - 14);
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(tapeLeftX, zoomY + 7, (W - 20) - tapeLeftX, zoomH - 14);
+
+      const dotInt = Math.floor(kin.d);
+      for (let d = 0; d <= dotInt; d++) {
+        const kd = getAtDot(d, phys);
+        const dx = headX - (kin.x - kd.x) * zoomPxPerCm;
+        if (dx >= 18 && dx <= headX + 5) {
+          const isCut = d % dps === 0;
+          if (isCut) {
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([3, 2]);
+            ctx.beginPath();
+            ctx.moveTo(dx, zoomY + 5);
+            ctx.lineTo(dx, zoomY + zoomH - 5);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+          ctx.fillStyle = isCut ? '#ef4444' : '#090d16';
+          ctx.beginPath();
+          ctx.arc(dx, zoomY + zoomH / 2, isCut ? 3.8 : 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(headX - 5, zoomY + 1, 10, 8);
+      ctx.fillStyle = '#fca5a5';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`◀ ${phys.timerHz}Hz 打点ヘッド`, headX + 10, zoomY + zoomH / 2 + 4);
+      ctx.restore();
+
+      const fullY = 78;
+      const fullH = 40;
+      const padL = 24;
+      const padR = 24;
+      const usableW = W - padL - padR;
+      const maxScaleCm = phys.floorDistCm * 1.03;
+      const pxPerCm = usableW / maxScaleCm;
+
+      drawFullTapeTrack(ctx, phys, kin, padL, fullY, fullH, pxPerCm, circled, true, W - padR);
+    }
+
+    function drawDualTapeStage(pSlope, kSlope, pFree, kFree) {
+      const rect = document.getElementById('tapeStage').getBoundingClientRect();
+      const W = rect.width;
+      const H = rect.height;
+      const ctx = tapeCtx;
+      ctx.clearRect(0, 0, W, H);
+
+      const circled = CIRCLED_NUMS.slice(1);
+      const padL = 115;
+      const padR = 24;
+      const usableW = W - padL - padR;
+
+      const maxScaleCm = Math.max(pSlope.floorDistCm, pFree.floorDistCm) * 1.03;
+      const pxPerCm = usableW / maxScaleCm;
+
+      ctx.fillStyle = '#60a5fa';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`📘 実験1：斜面`, 14, 34);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '11px Consolas, sans-serif';
+      ctx.fillText(`(${pSlope.timerHz}Hz, ${pSlope.angleDeg.toFixed(0)}°)`, 14, 50);
+
+      drawFullTapeTrack(ctx, pSlope, kSlope, padL, 18, 34, pxPerCm, circled, false, W - padR);
+
+      ctx.fillStyle = '#fb923c';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`📙 実験2：自由落下`, 14, 102);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '11px Consolas, sans-serif';
+      ctx.fillText(`(${pFree.timerHz}Hz, 90°)`, 14, 118);
+
+      drawFullTapeTrack(ctx, pFree, kFree, padL, 86, 34, pxPerCm, circled, true, W - padR);
+    }
+
+    function drawFullTapeTrack(ctx, phys, kin, padL, fullY, fullH, pxPerCm, circled, showRuler, rightEdgeX) {
+      const stripBgColors = [
+        '#dbeafe', '#dcfce7', '#fef9c3', '#ffedd5', '#f3e8ff',
+        '#ccfbf1', '#fee2e2', '#e0f2fe', '#fae8ff', '#d1fae5', '#fef3c7', '#e0e7ff'
+      ];
+      const dps = phys.dotsPerStrip;
+
+      phys.strips.forEach((st, i) => {
+        if (kin.x <= st.startCm) return;
+        const curEnd = Math.min(kin.x, st.endCm);
+        const x0 = padL + st.startCm * pxPerCm;
+        const w = Math.max(2, (curEnd - st.startCm) * pxPerCm);
+
+        ctx.fillStyle = stripBgColors[i % stripBgColors.length];
+        ctx.fillRect(x0, fullY, w, fullH);
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(x0, fullY, w, fullH);
+
+        if (kin.x >= st.endCm && !st.isPartial) {
+          ctx.fillStyle = '#f8fafc';
+          ctx.font = 'bold 11px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(circled[i] || `(${i + 1})`, x0 + w / 2, fullY - 4);
+
+          if (w > 26) {
+            ctx.fillStyle = '#38bdf8';
+            ctx.font = 'bold 9.5px Consolas, monospace';
+            ctx.fillText(`${st.length.toFixed(1)}cm`, x0 + w / 2, fullY + fullH + 12);
+          }
+
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 1.4;
+          ctx.setLineDash([3, 2]);
+          ctx.beginPath();
+          ctx.moveTo(x0 + w, fullY - 4);
+          ctx.lineTo(x0 + w, fullY + fullH + 4);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      });
+
+      const dotInt = Math.floor(kin.d);
+      for (let d = 0; d <= dotInt; d++) {
+        const kd = getAtDot(d, phys);
+        const x = padL + kd.x * pxPerCm;
+        const isCut = d % dps === 0;
+        ctx.fillStyle = isCut ? '#dc2626' : '#0f172a';
+        ctx.beginPath();
+        ctx.arc(x, fullY + fullH / 2, isCut ? 2.5 : 1.7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      if (showRuler) {
+        const rulerY = fullY + fullH + 18;
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padL, rulerY);
+        ctx.lineTo(rightEdgeX, rulerY);
+        ctx.stroke();
+
+        const maxCm = (rightEdgeX - padL) / pxPerCm;
+        const rulerStep = maxCm > 1200 ? 200 : maxCm > 600 ? 100 : maxCm > 350 ? 50 : maxCm > 150 ? 25 : 10;
+        for (let cm = 0; cm <= maxCm; cm += rulerStep) {
+          const rx = padL + cm * pxPerCm;
+          ctx.strokeStyle = '#64748b';
+          ctx.beginPath();
+          ctx.moveTo(rx, rulerY);
+          ctx.lineTo(rx, rulerY + 4);
+          ctx.stroke();
+          ctx.fillStyle = '#64748b';
+          ctx.font = '10px Consolas, monospace';
+          ctx.textAlign = 'center';
+          const rTxt = isFreeMeterMode() ? `${+(cm / 100).toFixed(2)}m` : `${cm}cm`;
+          ctx.fillText(rTxt, rx, rulerY + 13);
+        }
+      }
+      ctx.textAlign = 'left';
+    }
+
+    // =========================================================
+    // 3. 台紙グラフ モーダル描画
+    // =========================================================
+    function drawChartModal() {
+      const rect = document.getElementById('chartStage').getBoundingClientRect();
+      const W = rect.width;
+      const H = rect.height;
+      const ctx = chartCtx;
+      ctx.clearRect(0, 0, W, H);
+
+      const circled = CIRCLED_NUMS.slice(1);
+      const tbl = document.getElementById('modalTable');
+      const titleEl = document.getElementById('modalTableTitle');
+
+      if (state.chartTab === 'saved') {
+        const curRecLike = {
+          flatLenCm: state.flatLenCm,
+          frictionMu1: state.frictionMu1,
+          flatChangeCm: state.flatChangeCm,
+          frictionMu2: state.frictionMu2
+        };
+        const curFlatDesc = formatRecordFlatSummary(curRecLike);
+        const curPhys = getSinglePhysics(
+          1,
+          state.heightCm,
+          state.angleDeg,
+          state.timerHz,
+          state.flatLenCm,
+          state.frictionMu1,
+          state.flatChangeCm,
+          state.frictionMu2
+        );
+        const list = state.savedRecords.length > 0
+          ? state.savedRecords.map((rec, idx) => ({
+              label: `記録${idx + 1} (${rec.timerHz}Hz, h=${rec.heightCm}cm, θ=${rec.angleDeg}°, ${formatRecordFlatSummary(rec)})`,
+              shortLabel: `記録${idx + 1} (${rec.timerHz}Hz/${rec.heightCm}cm/${rec.angleDeg}°/${formatRecordFlatSummary(rec)})`,
+              phys: rec.phys,
+              strips: rec.phys.strips.filter(s => !s.isPartial),
+              color: rec.color
+            }))
+          : [{
+              label: `現在の実験1 (${state.timerHz}Hz, h=${state.heightCm}cm, θ=${state.angleDeg}°, ${curFlatDesc} ※未記録)`,
+              shortLabel: `現在 (${state.timerHz}Hz/${state.heightCm}cm/${state.angleDeg}°/${curFlatDesc})`,
+              phys: curPhys,
+              strips: curPhys.strips.filter(s => !s.isPartial),
+              color: '#38bdf8'
+            }];
+
+        let maxLen = 15;
+        list.forEach(item => {
+          item.strips.forEach(st => {
+            if (st.length > maxLen) maxLen = st.length;
+          });
+        });
+        const commonMax = Math.ceil((maxLen + 3) / 5) * 5;
+
+        const nGraphs = list.length;
+        const gap = 10;
+        const graphW = (W - 20 - gap * (nGraphs - 1)) / nGraphs;
+
+        list.forEach((item, idx) => {
+          const ox = 10 + idx * (graphW + gap);
+          drawPasteGraph(ctx, ox, 10, graphW, H - 20, item.strips, item.label, item.color, commonMax);
+        });
+
+        titleEl.textContent = state.savedRecords.length > 0
+          ? `📋 記録した実験1の結果比較（${state.savedRecords.length}個 / 同一縦軸スケールで比較）`
+          : `📋 現在の実験1データ（※[📌 現在の実験1を記録] を押すと最大3個まで並べて比較できます）`;
+
+        const maxCols = Math.max(1, ...list.map(it => it.strips.length));
+        const colHeaders = Array.from({ length: maxCols }, (_, i) => `<th>${circled[i] || i + 1}</th>`).join('');
+
+        tbl.innerHTML = `
+          <thead>
+            <tr>
+              <th>条件 / 項目</th>
+              <th>ΔL [cm]</th>
+              <th>終端速度 [cm/s]</th>
+              ${colHeaders}
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(it => `
+              <tr>
+                <th style="color:${it.color};">${it.shortLabel} 長さ[cm]</th>
+                <td style="color:${it.color}; font-weight:700;">+${it.phys.dL.toFixed(2)}</td>
+                <td style="color:#fbbf24; font-weight:700;">${it.phys.finalSpeed.toFixed(0)}</td>
+                ${Array.from({ length: maxCols }, (_, i) => `<td>${it.strips[i] ? it.strips[i].length.toFixed(1) : '-'}</td>`).join('')}
+              </tr>
+              <tr>
+                <th style="color:${it.color}; opacity:0.85;">${it.shortLabel} 速さ[cm/s]</th>
+                <td>-</td>
+                <td>-</td>
+                ${Array.from({ length: maxCols }, (_, i) => `<td style="color:#cbd5e1;">${it.strips[i] ? it.strips[i].avgSpeed.toFixed(0) : '-'}</td>`).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        `;
+      } else {
+        const p1 = getSinglePhysics(1, state.heightCm, state.angleDeg, state.timerHz);
+        const p2 = getSinglePhysics(2, state.heightCm, 90, state.timerHz);
+        const s1 = p1.strips.filter(s => !s.isPartial);
+        const s2 = p2.strips.filter(s => !s.isPartial);
+
+        const maxLen = Math.max(
+          s1[s1.length - 1]?.length || 15,
+          s2[s2.length - 1]?.length || 15
+        );
+        const commonMax = Math.ceil((maxLen + 5) / 5) * 5;
+        drawPasteGraph(ctx, 10, 10, W / 2 - 14, H - 20, s1, `実験1：斜面 (${state.timerHz}Hz: ${p1.dotsPerStrip}打点, h=${state.heightCm}cm, θ=${state.angleDeg}°)`, '#3b82f6', commonMax);
+        drawPasteGraph(ctx, W / 2 + 4, 10, W / 2 - 14, H - 20, s2, `実験2：自由落下 (${state.timerHz}Hz: ${p2.dotsPerStrip}打点, h=${state.heightCm}cm, 90°)`, '#f97316', commonMax);
+
+        titleEl.textContent = `📋 同じ高さ (h=${state.heightCm}cm, ${state.timerHz}Hz) での斜面と自由落下のデータ比較`;
+        const maxCols = Math.max(s1.length, s2.length);
+        const colHeaders = Array.from({ length: maxCols }, (_, i) => `<th>${circled[i] || i + 1}</th>`).join('');
+
+        tbl.innerHTML = `
+          <thead>
+            <tr>
+              <th>テープ番号 (0.1秒ごと)</th>
+              <th>ΔL [cm]</th>
+              <th>終端速度</th>
+              ${colHeaders}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th style="color:#60a5fa;">📘 斜面 (${state.angleDeg}°) 長さ [cm]</th>
+              <td style="color:#60a5fa; font-weight:700;">+${p1.dL.toFixed(2)}</td>
+              <td style="color:#fbbf24; font-weight:700;">${p1.finalSpeed.toFixed(0)}</td>
+              ${Array.from({ length: maxCols }, (_, i) => `<td>${s1[i] ? s1[i].length.toFixed(1) : '-'}</td>`).join('')}
+            </tr>
+            <tr>
+              <th style="color:#60a5fa;">📘 斜面 速さ [cm/s]</th>
+              <td>-</td>
+              <td>-</td>
+              ${Array.from({ length: maxCols }, (_, i) => `<td>${s1[i] ? s1[i].avgSpeed.toFixed(0) : '-'}</td>`).join('')}
+            </tr>
+            <tr>
+              <th style="color:#fb923c;">📙 自由落下 (90°) 長さ [cm]</th>
+              <td style="color:#fb923c; font-weight:700;">+${p2.dL.toFixed(2)}</td>
+              <td style="color:#fbbf24; font-weight:700;">${p2.finalSpeed.toFixed(0)}</td>
+              ${Array.from({ length: maxCols }, (_, i) => `<td>${s2[i] ? s2[i].length.toFixed(1) : '-'}</td>`).join('')}
+            </tr>
+            <tr>
+              <th style="color:#fb923c;">📙 自由落下 速さ [cm/s]</th>
+              <td>-</td>
+              <td>-</td>
+              ${Array.from({ length: maxCols }, (_, i) => `<td>${s2[i] ? s2[i].avgSpeed.toFixed(0) : '-'}</td>`).join('')}
+            </tr>
+          </tbody>
+        `;
+      }
+    }
+
+    function drawPasteGraph(ctx, ox, oy, bw, bh, strips, title, accent, maxCm) {
+      const padL = 46;
+      const padR = 12;
+      const padT = 32;
+      const padB = 38;
+      const px = ox + padL;
+      const py = oy + padT;
+      const pw = bw - padL - padR;
+      const ph = bh - padT - padB;
+
+      ctx.fillStyle = accent;
+      ctx.font = 'bold 11.5px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(title, px - 10, oy + 20);
+
+      const stepCm = maxCm > 40 ? 5 : maxCm > 20 ? 2 : 1;
+      const majorCm = maxCm > 40 ? 10 : 5;
+
+      for (let cm = 0; cm <= maxCm; cm += stepCm) {
+        const y = py + ph - (cm / maxCm) * ph;
+        const isMajor = cm % majorCm === 0;
+        ctx.strokeStyle = isMajor ? '#64748b' : '#1e293b';
+        ctx.lineWidth = isMajor ? 1.3 : 0.8;
+        ctx.beginPath();
+        ctx.moveTo(px, y);
+        ctx.lineTo(px + pw, y);
+        ctx.stroke();
+
+        if (isMajor) {
+          ctx.fillStyle = '#cbd5e1';
+          ctx.font = 'bold 10px Consolas, monospace';
+          ctx.textAlign = 'right';
+          ctx.fillText(`${cm}cm`, px - 5, y + 4);
+        }
+      }
+
+      const n = Math.max(1, strips.length);
+      const stripW = Math.min(44, pw / n);
+      const circled = CIRCLED_NUMS.slice(1);
+
+      strips.forEach((st, i) => {
+        const x = px + i * stripW;
+        ctx.fillStyle = '#e2e8f0';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(circled[i] || i + 1, x + stripW / 2, py + ph + 16);
+
+        const barH = (st.length / maxCm) * ph;
+        const yTop = py + ph - barH;
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(x + 1.5, yTop, stripW - 3, barH);
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(x + 1.5, yTop, stripW - 3, barH);
+
+        st.innerDots.forEach((dotCm, dIdx) => {
+          if (dIdx === 0) return;
+          const dy = py + ph - (dotCm / maxCm) * ph;
+          ctx.fillStyle = '#090d16';
+          ctx.beginPath();
+          ctx.arc(x + stripW / 2, dy, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        if (stripW >= 20) {
+          ctx.fillStyle = accent;
+          ctx.font = 'bold 9px Consolas, monospace';
+          ctx.fillText(st.length.toFixed(1), x + stripW / 2, yTop - 4);
+        }
+      });
+
+      if (strips.length >= 2) {
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        strips.forEach((st, idx) => {
+          const cx = px + (idx + 0.5) * stripW;
+          const cy = py + ph - (st.length / maxCm) * ph;
+          if (idx === 0) ctx.moveTo(cx, cy);
+          else ctx.lineTo(cx, cy);
+        });
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(px, py, pw, ph);
+    }
+
+    // =========================================================
+    // エネルギー表示窓のマウスドラッグ移動 ＆ 8方向リサイズ
+    // =========================================================
+    function clampEnergyPanelToStage() {
+      const panel = document.getElementById('energyPanel');
+      const stage = document.getElementById('simStage');
+      if (!panel || !stage || panel.classList.contains('hidden')) return;
+
+      const stageW = stage.clientWidth;
+      const stageH = stage.clientHeight;
+      if (stageW <= 0 || stageH <= 0) return;
+
+      const minW = 280;
+      const minH = 175;
+      let w = Math.max(minW, Math.min(stageW - 12, panel.offsetWidth));
+      let h = Math.max(minH, Math.min(stageH - 12, panel.offsetHeight));
+      let l = Math.max(4, Math.min(stageW - w - 4, panel.offsetLeft));
+      let t = Math.max(4, Math.min(stageH - h - 4, panel.offsetTop));
+
+      panel.style.width = `${w}px`;
+      panel.style.height = `${h}px`;
+      panel.style.left = `${l}px`;
+      panel.style.top = `${t}px`;
+    }
+
+    function initEnergyPanelDragResize() {
+      const panel = document.getElementById('energyPanel');
+      const header = document.getElementById('energyPanelHeader');
+      const stage = document.getElementById('simStage');
+      const resizers = panel.querySelectorAll('.energy-resizer');
+
+      let mode = null; // 'drag' | 'resize'
+      let resizeDir = '';
+      let startMouseX = 0;
+      let startMouseY = 0;
+      let startLeft = 0;
+      let startTop = 0;
+      let startWidth = 0;
+      let startHeight = 0;
+
+      // ヘッダードラッグで移動
+      header.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        mode = 'drag';
+        startMouseX = e.clientX;
+        startMouseY = e.clientY;
+        startLeft = panel.offsetLeft;
+        startTop = panel.offsetTop;
+        panel.classList.add('dragging');
+        e.preventDefault();
+      });
+
+      // 8方向リサイズハンドルで拡大縮小
+      resizers.forEach((handle) => {
+        handle.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
+          mode = 'resize';
+          resizeDir = handle.dataset.dir || 'se';
+          startMouseX = e.clientX;
+          startMouseY = e.clientY;
+          startLeft = panel.offsetLeft;
+          startTop = panel.offsetTop;
+          startWidth = panel.offsetWidth;
+          startHeight = panel.offsetHeight;
+          panel.classList.add('resizing');
+          e.preventDefault();
+          e.stopPropagation();
+        });
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!mode) return;
+        const stageW = stage.clientWidth;
+        const stageH = stage.clientHeight;
+        const dx = e.clientX - startMouseX;
+        const dy = e.clientY - startMouseY;
+
+        if (mode === 'drag') {
+          const w = panel.offsetWidth;
+          const h = panel.offsetHeight;
+          const nextLeft = Math.max(4, Math.min(stageW - w - 4, startLeft + dx));
+          const nextTop = Math.max(4, Math.min(stageH - h - 4, startTop + dy));
+          panel.style.left = `${nextLeft}px`;
+          panel.style.top = `${nextTop}px`;
+        } else if (mode === 'resize') {
+          const minW = 280;
+          const minH = 175;
+          let newLeft = startLeft;
+          let newTop = startTop;
+          let newW = startWidth;
+          let newH = startHeight;
+
+          if (resizeDir.includes('e')) {
+            newW = Math.max(minW, Math.min(stageW - startLeft - 4, startWidth + dx));
+          }
+          if (resizeDir.includes('s')) {
+            newH = Math.max(minH, Math.min(stageH - startTop - 4, startHeight + dy));
+          }
+          if (resizeDir.includes('w')) {
+            const maxLeft = startLeft + startWidth - minW;
+            newLeft = Math.max(4, Math.min(maxLeft, startLeft + dx));
+            newW = startWidth + (startLeft - newLeft);
+          }
+          if (resizeDir.includes('n')) {
+            const maxTop = startTop + startHeight - minH;
+            newTop = Math.max(4, Math.min(maxTop, startTop + dy));
+            newH = startHeight + (startTop - newTop);
+          }
+
+          panel.style.left = `${newLeft}px`;
+          panel.style.top = `${newTop}px`;
+          panel.style.width = `${newW}px`;
+          panel.style.height = `${newH}px`;
+
+          // キャンバスを即座にリサイズして再描画
+          if (state.showEnergyGraph) {
+            const pSlope = getSinglePhysics(1);
+            const pFree = getSinglePhysics(2);
+            const kSlope = getAtDot(state.currentDot, pSlope);
+            const kFree = getAtDot(state.currentDot, pFree);
+            drawEnergyPanel(pSlope, kSlope, pFree, kFree);
+          }
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (!mode) return;
+        mode = null;
+        panel.classList.remove('dragging', 'resizing');
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initEnergyPanelDragResize();
+      setExperiment(1);
+      updateSavedRecordsUI();
+      resizeAllCanvases();
+    });
+  </script>
+</body>
+</html>

@@ -5,6 +5,8 @@
 - **入口**: [index.html](index.html)
 - **力の関係性**: [forces.html](forces.html) — 既存の図解・作図・4択テスト
 - **電気回路**: [circuits.html](circuits.html) — 直列・並列・混合回路、シミュレーター、4択クイズ
+- **イオンモデルラボ**: [ions.html](ions.html) — 中和・電気分解・電池・電子配置パズル
+- **斜面と自由落下（記録タイマー）**: [motion.html](motion.html) — 斜面・自由落下・水平面運動、50Hz(東日本)/60Hz(西日本)記録タイマー、位置・運動エネルギーグラフ、台紙グラフ比較
 
 ## 管理と公開
 
