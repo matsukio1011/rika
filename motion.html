@@ -90,6 +90,144 @@
       height: 44px;
     }
 
+    /* ===== Hamburger Menu Button & Settings Drawer ===== */
+    .btn-hamburger {
+      background: rgba(56, 189, 248, 0.14);
+      border: 1.5px solid rgba(56, 189, 248, 0.45);
+      color: #e0f2fe;
+      height: 42px;
+      padding: 0 12px;
+      gap: 7px;
+    }
+
+    .btn-hamburger:hover:not(:disabled) {
+      background: rgba(56, 189, 248, 0.24);
+      border-color: #38bdf8;
+    }
+
+    .btn-hamburger.active {
+      background: #0284c7;
+      border-color: #38bdf8;
+      color: #ffffff;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+    }
+
+    .hamburger-icon {
+      font-size: 1.05rem;
+      line-height: 1;
+    }
+
+    .hamburger-summary {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      color: #93c5fd;
+    }
+
+    .btn-hamburger.active .hamburger-summary {
+      background: rgba(2, 6, 23, 0.45);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+
+    .settings-drawer {
+      position: fixed;
+      top: 70px;
+      left: 14px;
+      width: 390px;
+      max-width: calc(100vw - 28px);
+      max-height: calc(100vh - 84px);
+      overflow-y: auto;
+      background: rgba(15, 23, 42, 0.96);
+      backdrop-filter: blur(14px);
+      border: 1.5px solid rgba(56, 189, 248, 0.45);
+      border-radius: 14px;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.7);
+      padding: 14px 16px;
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 60;
+    }
+
+    .settings-drawer.open {
+      display: flex;
+    }
+
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .drawer-title {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .drawer-section {
+      background: rgba(9, 13, 22, 0.65);
+      border: 1px solid rgba(51, 65, 85, 0.85);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .drawer-section-title {
+      font-size: 0.74rem;
+      font-weight: 800;
+      color: #94a3b8;
+      letter-spacing: 0.04em;
+    }
+
+    .drawer-btn-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .drawer-btn-row .preset-btn,
+    .drawer-btn-row .hz-btn {
+      flex: 1;
+      text-align: center;
+      padding: 8px 6px;
+      font-size: 0.78rem;
+    }
+
+    .drawer-slider-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .drawer-slider-row .slider-label {
+      min-width: 72px;
+      font-size: 0.78rem;
+    }
+
+    .drawer-slider-row input[type="range"] {
+      flex: 1;
+      width: auto;
+      min-width: 110px;
+    }
+
+    .drawer-slider-row .slider-val {
+      min-width: 54px;
+      font-size: 0.84rem;
+    }
+
     .preset-btn {
       padding: 6px 8px;
       border-radius: 7px;
@@ -888,64 +1026,12 @@
     </div>
 
     <div class="controls-center">
-      <!-- 実験モード切替 -->
-      <div class="control-pill">
-        <button class="preset-btn active-1" id="btnExp1" onclick="setExperiment(1)">🛷 実験1：斜面</button>
-        <button class="preset-btn" id="btnExp2" onclick="setExperiment(2)">⬇️ 実験2：自由落下</button>
-        <button class="preset-btn" id="btnExp3" onclick="setExperiment(3)">⚖️ 並べて表示</button>
-      </div>
-
-      <!-- 記録タイマー 50Hz / 60Hz 切替 -->
-      <div class="control-pill" title="50Hz(東日本)は5打点ごと(0.1秒)、60Hz(西日本)は6打点ごと(0.1秒)にテープを区切ります">
-        <span class="slider-label">タイマー:</span>
-        <button class="hz-btn" id="btnHz50" onclick="setTimerHz(50)">50Hz (東日本)</button>
-        <button class="hz-btn active-hz" id="btnHz60" onclick="setTimerHz(60)">60Hz (西日本)</button>
-      </div>
-
-      <!-- A点の高さ & 斜面の角度 & 水平面・摩擦係数 -->
-      <div class="control-pill">
-        <div class="slider-wrap">
-          <span class="slider-label">高さ(h):</span>
-          <input type="range" id="heightSlider" min="20" max="200" step="5" value="60" oninput="onHeightInput()" />
-          <span class="slider-val" id="heightVal" style="color:#fbbf24;">60 cm</span>
-          <div class="unit-toggle" id="heightUnitToggle" title="自由落下のときは高さの単位を cm / m に切り替えられます">
-            <button class="unit-btn active" id="btnUnitCm" onclick="setHeightUnit('cm')">cm</button>
-            <button class="unit-btn" id="btnUnitM" onclick="setHeightUnit('m')">m</button>
-          </div>
-        </div>
-        <div style="width:1px; height:24px; background:#334155;"></div>
-        <div class="slider-wrap" id="angleSliderWrap">
-          <span class="slider-label">角度(θ):</span>
-          <input type="range" id="angleSlider" min="10" max="60" step="1" value="20" oninput="onAngleInput()" />
-          <span class="slider-val" id="angleVal" style="min-width:32px;">20°</span>
-        </div>
-        <div id="flatControlsGroup" style="display:flex; align-items:center; gap:5px;">
-          <div style="width:1px; height:24px; background:#334155;"></div>
-          <div class="slider-wrap" title="斜面の下に続く水平面全体の長さを設定します（0〜300cm）">
-            <span class="slider-label">水平面:</span>
-            <input type="range" id="flatLenSlider" min="0" max="300" step="10" value="160" oninput="onFlatLenInput()" />
-            <span class="slider-val" id="flatLenVal" style="color:#34d399; min-width:46px;">160 cm</span>
-          </div>
-          <div style="width:1px; height:24px; background:#334155;"></div>
-          <div class="slider-wrap" title="水平面・前半（斜面下端B〜切替位置C）の動摩擦係数 μ₁（0.00＝摩擦なし）">
-            <span class="slider-label">前半μ₁:</span>
-            <input type="range" id="friction1Slider" min="0" max="0.50" step="0.02" value="0.00" oninput="onFriction1Input()" />
-            <span class="slider-val" id="friction1Val" style="color:#38bdf8; min-width:32px;">0.00</span>
-          </div>
-          <div style="width:1px; height:24px; background:#334155;"></div>
-          <div class="slider-wrap" title="斜面の下端(B点)から何cmの位置(C点)で摩擦係数を μ₁ → μ₂ に切り替えるか設定します">
-            <span class="slider-label">切替位置:</span>
-            <input type="range" id="flatChangeSlider" min="0" max="160" step="10" value="60" oninput="onFlatChangeInput()" />
-            <span class="slider-val" id="flatChangeVal" style="color:#fbbf24; min-width:44px;">60 cm</span>
-          </div>
-          <div style="width:1px; height:24px; background:#334155;"></div>
-          <div class="slider-wrap" title="水平面・後半（切替位置C〜終端）の動摩擦係数 μ₂">
-            <span class="slider-label">後半μ₂:</span>
-            <input type="range" id="friction2Slider" min="0" max="0.50" step="0.02" value="0.20" oninput="onFriction2Input()" />
-            <span class="slider-val" id="friction2Val" style="color:#f472b6; min-width:32px;">0.20</span>
-          </div>
-        </div>
-      </div>
+      <!-- ハンバーガーメニュー（実験モード・タイマー・実験条件） -->
+      <button class="btn btn-hamburger" id="btnHamburger" onclick="toggleSettingsMenu(event)" aria-expanded="false" aria-controls="settingsDrawer" title="実験モード・記録タイマー・高さ/角度/水平面・摩擦の設定を開きます">
+        <span class="hamburger-icon">☰</span>
+        <span>実験設定</span>
+        <span class="hamburger-summary" id="hamburgerSummary">実験1 / 60Hz</span>
+      </button>
 
       <!-- 再生速度 -->
       <div class="control-pill">
@@ -976,6 +1062,80 @@
       </button>
     </div>
   </header>
+
+  <!-- ハンバーガーメニュー内：実験設定ドロワー -->
+  <aside class="settings-drawer" id="settingsDrawer" onclick="event.stopPropagation()">
+    <div class="drawer-header">
+      <div class="drawer-title">⚙️ 実験・タイマー・条件設定</div>
+      <button class="btn" style="height:28px; padding:0 9px; font-size:0.74rem;" onclick="closeSettingsMenu()">✕ 閉じる</button>
+    </div>
+
+    <!-- 実験モード切替 -->
+    <div class="drawer-section">
+      <div class="drawer-section-title">🔬 実験モード</div>
+      <div class="drawer-btn-row">
+        <button class="preset-btn active-1" id="btnExp1" onclick="setExperiment(1)">🛷 実験1：斜面</button>
+        <button class="preset-btn" id="btnExp2" onclick="setExperiment(2)">⬇️ 実験2：自由落下</button>
+        <button class="preset-btn" id="btnExp3" onclick="setExperiment(3)">⚖️ 並べて表示</button>
+      </div>
+    </div>
+
+    <!-- 記録タイマー 50Hz / 60Hz 切替 -->
+    <div class="drawer-section" title="50Hz(東日本)は5打点ごと(0.1秒)、60Hz(西日本)は6打点ごと(0.1秒)にテープを区切ります">
+      <div class="drawer-section-title">⚡ 記録タイマー（打点間隔）</div>
+      <div class="drawer-btn-row">
+        <button class="hz-btn" id="btnHz50" onclick="setTimerHz(50)">50Hz (東日本)</button>
+        <button class="hz-btn active-hz" id="btnHz60" onclick="setTimerHz(60)">60Hz (西日本)</button>
+      </div>
+    </div>
+
+    <!-- A点の高さ & 斜面の角度 & 水平面・摩擦係数 -->
+    <div class="drawer-section">
+      <div class="drawer-section-title">📐 斜面・高さ・水平面・摩擦の条件</div>
+
+      <div class="drawer-slider-row">
+        <span class="slider-label">高さ(h):</span>
+        <input type="range" id="heightSlider" min="20" max="200" step="5" value="60" oninput="onHeightInput()" />
+        <span class="slider-val" id="heightVal" style="color:#fbbf24;">60 cm</span>
+        <div class="unit-toggle" id="heightUnitToggle" title="自由落下のときは高さの単位を cm / m に切り替えられます">
+          <button class="unit-btn active" id="btnUnitCm" onclick="setHeightUnit('cm')">cm</button>
+          <button class="unit-btn" id="btnUnitM" onclick="setHeightUnit('m')">m</button>
+        </div>
+      </div>
+
+      <div class="drawer-slider-row slider-wrap" id="angleSliderWrap">
+        <span class="slider-label">角度(θ):</span>
+        <input type="range" id="angleSlider" min="10" max="60" step="1" value="20" oninput="onAngleInput()" />
+        <span class="slider-val" id="angleVal">20°</span>
+      </div>
+
+      <div id="flatControlsGroup" style="display:flex; flex-direction:column; gap:9px; padding-top:6px; border-top:1px dashed rgba(148,163,184,0.22);">
+        <div class="drawer-slider-row" title="斜面の下に続く水平面全体の長さを設定します（0〜300cm）">
+          <span class="slider-label">水平面:</span>
+          <input type="range" id="flatLenSlider" min="0" max="300" step="10" value="160" oninput="onFlatLenInput()" />
+          <span class="slider-val" id="flatLenVal" style="color:#34d399;">160 cm</span>
+        </div>
+
+        <div class="drawer-slider-row" title="水平面・前半（斜面下端B〜切替位置C）の動摩擦係数 μ₁（0.00＝摩擦なし）">
+          <span class="slider-label">前半μ₁:</span>
+          <input type="range" id="friction1Slider" min="0" max="0.50" step="0.02" value="0.00" oninput="onFriction1Input()" />
+          <span class="slider-val" id="friction1Val" style="color:#38bdf8;">0.00</span>
+        </div>
+
+        <div class="drawer-slider-row" title="斜面の下端(B点)から何cmの位置(C点)で摩擦係数を μ₁ → μ₂ に切り替えるか設定します">
+          <span class="slider-label">切替位置:</span>
+          <input type="range" id="flatChangeSlider" min="0" max="160" step="10" value="60" oninput="onFlatChangeInput()" />
+          <span class="slider-val" id="flatChangeVal" style="color:#fbbf24;">60 cm</span>
+        </div>
+
+        <div class="drawer-slider-row" title="水平面・後半（切替位置C〜終端）の動摩擦係数 μ₂">
+          <span class="slider-label">後半μ₂:</span>
+          <input type="range" id="friction2Slider" min="0" max="0.50" step="0.02" value="0.20" oninput="onFriction2Input()" />
+          <span class="slider-val" id="friction2Val" style="color:#f472b6;">0.20</span>
+        </div>
+      </div>
+    </div>
+  </aside>
 
   <!-- Main Workspace -->
   <main class="workspace">
@@ -1797,6 +1957,7 @@
 
       document.getElementById('btnHz50').className = 'hz-btn' + (hz === 50 ? ' active-hz' : '');
       document.getElementById('btnHz60').className = 'hz-btn' + (hz === 60 ? ' active-hz' : '');
+      updateHamburgerSummary();
 
       const dps = hz / 10;
       showToast(`⚡ 記録タイマーを ${hz}Hz（1秒間に${hz}回打点 / ${dps}打点＝0.1秒）に切り替えました`);
@@ -1970,8 +2131,48 @@
     window.addEventListener('resize', resizeAllCanvases);
 
     // =========================================================
-    // UI コントロール
+    // UI コントロール（ハンバーガーメニュー開閉含む）
     // =========================================================
+    function toggleSettingsMenu(e) {
+      if (e) e.stopPropagation();
+      const drawer = document.getElementById('settingsDrawer');
+      const btn = document.getElementById('btnHamburger');
+      const isOpen = drawer.classList.toggle('open');
+      btn.classList.toggle('active', isOpen);
+      btn.setAttribute('aria-expanded', String(isOpen));
+    }
+
+    function closeSettingsMenu() {
+      const drawer = document.getElementById('settingsDrawer');
+      const btn = document.getElementById('btnHamburger');
+      if (!drawer || !drawer.classList.contains('open')) return;
+      drawer.classList.remove('open');
+      btn.classList.remove('active');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+
+    function updateHamburgerSummary() {
+      const el = document.getElementById('hamburgerSummary');
+      if (!el) return;
+      const modeLabel = state.expMode === 1 ? '実験1:斜面' : state.expMode === 2 ? '自由落下' : '並べて比較';
+      el.textContent = `${modeLabel} / ${state.timerHz}Hz`;
+    }
+
+    document.addEventListener('click', (e) => {
+      const drawer = document.getElementById('settingsDrawer');
+      const btn = document.getElementById('btnHamburger');
+      if (!drawer || !drawer.classList.contains('open')) return;
+      if (!drawer.contains(e.target) && !btn.contains(e.target)) {
+        closeSettingsMenu();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeSettingsMenu();
+      }
+    });
+
     function setExperiment(mode) {
       state.playing = false;
       state.expMode = mode;
@@ -2005,6 +2206,7 @@
 
       syncHeightSliderUI();
       updateSavedRecordsUI();
+      updateHamburgerSummary();
       updateStartBtn();
       render();
     }
@@ -2089,6 +2291,7 @@
       document.getElementById('btnExp2').className = 'preset-btn';
       document.getElementById('btnExp3').className = 'preset-btn' + (state.expMode === 3 ? ' active-3' : '');
       updateSavedRecordsUI();
+      updateHamburgerSummary();
       updateStartBtn();
       render();
     }
