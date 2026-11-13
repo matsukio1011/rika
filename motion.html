@@ -977,13 +977,12 @@
     .strip-popup-backdrop {
       position: absolute;
       inset: 0;
-      background: rgba(9, 13, 22, 0.72);
-      backdrop-filter: blur(5px);
+      background: rgba(9, 13, 22, 0.22);
       z-index: 45;
       display: none;
       align-items: center;
-      justify-content: center;
-      padding: 20px;
+      justify-content: flex-end;
+      padding: 20px 28px;
       border-radius: 14px;
     }
 
@@ -992,11 +991,11 @@
     }
 
     .strip-popup-card {
-      width: min(520px, 94%);
-      background: #0f172a;
-      border: 2px solid #38bdf8;
+      width: min(460px, 92%);
+      background: rgba(15, 23, 42, 0.98);
+      border: 2px solid #facc15;
       border-radius: 16px;
-      box-shadow: 0 22px 54px rgba(0, 0, 0, 0.8);
+      box-shadow: 0 22px 54px rgba(0, 0, 0, 0.85);
       padding: 18px 22px;
       display: flex;
       flex-direction: column;
@@ -4513,17 +4512,41 @@
         const labelNum = circled[i] || (i + 1);
         const isHovered = state.hoveredChartStrip && state.hoveredChartStrip.graphIdx === graphIdx && state.hoveredChartStrip.stripIndex === i;
         const isPopup = state.popupChartStrip && state.popupChartStrip.graphIdx === graphIdx && state.popupChartStrip.stripIndex === i;
+        const hasAnyPopup = Boolean(state.popupChartStrip);
 
-        ctx.fillStyle = (isHovered || isPopup) ? '#38bdf8' : '#e2e8f0';
-        ctx.font = 'bold 10px sans-serif';
+        ctx.save();
+        if (hasAnyPopup && !isPopup && !isHovered) {
+          ctx.globalAlpha = 0.42;
+        }
+
+        // 選択中台紙の背景縦帯ハイライト
+        if (isPopup) {
+          ctx.fillStyle = 'rgba(250, 204, 21, 0.16)';
+          ctx.fillRect(x, py, stripW, ph);
+        }
+
+        ctx.fillStyle = isPopup ? '#fde047' : isHovered ? '#38bdf8' : '#e2e8f0';
+        ctx.font = isPopup ? 'bold 11.5px sans-serif' : 'bold 10px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(labelNum, x + stripW / 2, py + ph + 16);
 
-        ctx.fillStyle = (isHovered || isPopup) ? '#e0f2fe' : '#f8fafc';
-        ctx.fillRect(x + 1.5, yTop, stripW - 3, barH);
-        ctx.strokeStyle = (isHovered || isPopup) ? '#38bdf8' : '#334155';
-        ctx.lineWidth = (isHovered || isPopup) ? 2.4 : 1.2;
-        ctx.strokeRect(x + 1.5, yTop, stripW - 3, barH);
+        if (isPopup) {
+          ctx.save();
+          ctx.shadowColor = 'rgba(250, 204, 21, 0.75)';
+          ctx.shadowBlur = 12;
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(x + 1.5, yTop, stripW - 3, barH);
+          ctx.restore();
+          ctx.strokeStyle = '#facc15';
+          ctx.lineWidth = 2.8;
+          ctx.strokeRect(x + 1.5, yTop, stripW - 3, barH);
+        } else {
+          ctx.fillStyle = isHovered ? '#e0f2fe' : '#f8fafc';
+          ctx.fillRect(x + 1.5, yTop, stripW - 3, barH);
+          ctx.strokeStyle = isHovered ? '#38bdf8' : '#334155';
+          ctx.lineWidth = isHovered ? 2.4 : 1.2;
+          ctx.strokeRect(x + 1.5, yTop, stripW - 3, barH);
+        }
 
         // 台紙のクリック判定領域を登録（下の番号ラベルから棒の上端まで押しやすく確保）
         chartStripHitBoxes.push({
@@ -4550,11 +4573,22 @@
           ctx.fill();
         });
 
-        if (stripW >= 20) {
-          ctx.fillStyle = accent;
-          ctx.font = 'bold 9px Consolas, monospace';
+        if (stripW >= 20 || isPopup) {
+          ctx.fillStyle = isPopup ? '#fde047' : accent;
+          ctx.font = isPopup ? 'bold 10.5px Consolas, monospace' : 'bold 9px Consolas, monospace';
           ctx.fillText(st.length.toFixed(1), x + stripW / 2, yTop - 4);
         }
+
+        // ポップアップ中の台紙の上部に「▼ 選択中」マーカーを描画
+        if (isPopup) {
+          const markerY = Math.max(py + 12, yTop - 19);
+          ctx.fillStyle = '#facc15';
+          ctx.font = 'bold 10px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('▼ 選択中', x + stripW / 2, markerY);
+        }
+
+        ctx.restore();
       });
 
       if (strips.length >= 2) {
@@ -4640,6 +4674,17 @@
 
     function onStripBackdropClick(e) {
       if (e.target.id === 'stripPopupBackdrop') {
+        // ポップアップ表示中に左側の台紙グラフの別の台紙をクリックしたら直接切り替え
+        const rect = chartCanvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        if (mx >= 0 && mx <= rect.width && my >= 0 && my <= rect.height) {
+          const hit = findChartStripAt(mx, my);
+          if (hit) {
+            openStripPopup(hit.graphIdx, hit.stripIndex);
+            return;
+          }
+        }
         closeStripPopup();
       }
     }
