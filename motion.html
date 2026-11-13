@@ -1004,65 +1004,6 @@
       gap: 12px;
     }
 
-    .strip-minimap {
-      display: flex;
-      align-items: flex-end;
-      gap: 4px;
-      height: 56px;
-      padding: 6px 8px 4px;
-      background: #090d16;
-      border: 1px solid #334155;
-      border-radius: 10px;
-      overflow-x: auto;
-    }
-
-    .strip-mini-item {
-      flex: 1;
-      min-width: 22px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 2px;
-      height: 100%;
-      cursor: pointer;
-      border-radius: 5px;
-      padding: 2px 1px;
-      transition: background 0.12s;
-    }
-
-    .strip-mini-item:hover {
-      background: rgba(56, 189, 248, 0.15);
-    }
-
-    .strip-mini-item.active {
-      background: rgba(250, 204, 21, 0.22);
-      outline: 1.5px solid #facc15;
-    }
-
-    .strip-mini-bar {
-      width: 72%;
-      border-radius: 2px 2px 0 0;
-      background: #94a3b8;
-      min-height: 4px;
-    }
-
-    .strip-mini-item.active .strip-mini-bar {
-      background: #fde047;
-      box-shadow: 0 0 8px rgba(250, 204, 21, 0.7);
-    }
-
-    .strip-mini-num {
-      font-size: 0.66rem;
-      font-weight: 800;
-      color: #94a3b8;
-      line-height: 1;
-    }
-
-    .strip-mini-item.active .strip-mini-num {
-      color: #fde047;
-    }
-
     .strip-popup-header {
       display: flex;
       align-items: center;
@@ -1426,8 +1367,6 @@
             </div>
             <button class="btn btn-reset" style="height:34px; font-size:0.8rem;" onclick="closeStripPopup()">✕ 閉じる</button>
           </div>
-          <!-- 今どの台紙か一目でわかるミニマップ -->
-          <div class="strip-minimap" id="stripMiniMap" title="クリックで他の台紙に切り替え"></div>
           <div class="strip-popup-metrics">
             <div class="strip-metric-box" style="border-color:rgba(56,189,248,0.45);">
               <div class="strip-metric-label">📏 台紙の長さ（0.1秒間）</div>
@@ -4815,21 +4754,6 @@
 
       document.getElementById('stripPopupTitle').innerHTML = `📏 台紙 <span style="color:#fde047;">${hit.labelNum}</span> <span style="font-size:0.8rem; color:#94a3b8; font-weight:700;">（全${hit.totalStrips}枚中 ${stripIndex + 1}番目）</span>`;
       document.getElementById('stripPopupSub').textContent = hit.graphTitle;
-
-      // ミニマップを描画してどの台紙か一目でわかるようにする
-      const sameGraph = chartStripHitBoxes.filter(b => b.graphIdx === graphIdx);
-      const maxBarLen = Math.max(1, ...sameGraph.map(b => b.strip.length));
-      const miniMapEl = document.getElementById('stripMiniMap');
-      miniMapEl.innerHTML = sameGraph.map(b => {
-        const hPct = Math.max(12, Math.round((b.strip.length / maxBarLen) * 100));
-        const isActive = b.stripIndex === stripIndex;
-        return `
-          <div class="strip-mini-item${isActive ? ' active' : ''}" onclick="openStripPopup(${graphIdx}, ${b.stripIndex})" title="台紙 ${b.labelNum}: ${b.strip.length.toFixed(1)}cm">
-            <div class="strip-mini-bar" style="height:${hPct}%;"></div>
-            <div class="strip-mini-num">${b.labelNum}</div>
-          </div>
-        `;
-      }).join('');
 
       document.getElementById('stripPopupLen').textContent = `${st.length.toFixed(1)} cm`;
       if (hit.prevLength !== null) {
