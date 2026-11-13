@@ -2091,6 +2091,61 @@
 
         ctx.restore();
       }
+
+      drawForcePopupEnergyBox(ctx, W, H, phys, speedAtGhost, kin);
+    }
+
+    function drawForcePopupEnergyBox(ctx, W, H, phys, speedAtGhost, kin) {
+      const { epPct, ekPct, emPct } = calcEnergyPercent(kin.x, speedAtGhost, phys);
+      const boxW = Math.min(256, W - 24);
+      const boxH = 122;
+      const bx = W - boxW - 14;
+      const by = H - boxH - 14;
+
+      ctx.save();
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bx, by, boxW, boxH, 12);
+      else ctx.rect(bx, by, boxW, boxH);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('⚡ この瞬間のエネルギー', bx + 12, by + 20);
+
+      const rows = [
+        { label: '位置エネルギー', pct: epPct, color: '#38bdf8' },
+        { label: '運動エネルギー', pct: ekPct, color: '#34d399' },
+        { label: '力学的エネルギー', pct: emPct, color: '#fbbf24' }
+      ];
+
+      const barX = bx + 12;
+      const barW = boxW - 24;
+      rows.forEach((row, idx) => {
+        const ry = by + 38 + idx * 28;
+        ctx.fillStyle = row.color;
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(row.label, barX, ry);
+
+        ctx.font = 'bold 11px Consolas, monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText(`${row.pct.toFixed(0)}%`, barX + barW, ry);
+
+        const trackY = ry + 5;
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.18)';
+        ctx.fillRect(barX, trackY, barW, 7);
+
+        const fillW = Math.max(0, Math.min(barW, (row.pct / 100) * barW));
+        ctx.fillStyle = row.color;
+        ctx.fillRect(barX, trackY, fillW, 7);
+      });
+
+      ctx.restore();
     }
 
     function drawBigArrow(ctx, x1, y1, x2, y2, color, width) {
