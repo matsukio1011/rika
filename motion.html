@@ -3455,7 +3455,7 @@
           const gx = startCenterX - kg.x * pxPerCm;
           const isHovered = state.hoveredGhost && state.hoveredGhost.modeType === 1 && state.hoveredGhost.stripIndex === s;
           const isPopup = state.popupGhost && state.popupGhost.modeType === 1 && state.popupGhost.stripIndex === s;
-          drawCartOnSlope(ctx, gx, cartHalf, true, s, isHovered || isPopup);
+          drawCartOnSlope(ctx, gx, cartHalf, true, s, isHovered, isPopup);
           registerSlopeGhostHitBox(rampLeftX, rampLeftY, rad, gx, -26, 26, s, maxStrip);
         }
       }
@@ -3528,7 +3528,7 @@
           const gy = startCenterY + kg.x * pxPerCm;
           const isHovered = state.hoveredGhost && state.hoveredGhost.modeType === 2 && state.hoveredGhost.stripIndex === s;
           const isPopup = state.popupGhost && state.popupGhost.modeType === 2 && state.popupGhost.stripIndex === s;
-          drawVerticalCart(ctx, freeCenterX, gy, vCartHalf, true, s, kg.x, isHovered || isPopup);
+          drawVerticalCart(ctx, freeCenterX, gy, vCartHalf, true, s, kg.x, isHovered, isPopup);
           registerFreeGhostHitBox(freeCenterX, gy, 24, s, maxStrip);
         }
       }
@@ -3876,7 +3876,7 @@
             const gx = startCenterX - kGhost.x * pxPerCm;
             const isHovered = state.hoveredGhost && state.hoveredGhost.modeType === 1 && state.hoveredGhost.stripIndex === s;
             const isPopup = state.popupGhost && state.popupGhost.modeType === 1 && state.popupGhost.stripIndex === s;
-            drawCartOnSlope(ctx, gx, cartHalf, true, s, isHovered || isPopup);
+            drawCartOnSlope(ctx, gx, cartHalf, true, s, isHovered, isPopup);
             registerSlopeGhostHitBox(rampLeftX, rampLeftY, rad, gx, -26, 28, s, maxStrip);
           }
         }
@@ -3934,7 +3934,7 @@
             const gx = -flatGhostPx - cartHalf;
             const isHovered = state.hoveredGhost && state.hoveredGhost.modeType === 1 && state.hoveredGhost.stripIndex === s;
             const isPopup = state.popupGhost && state.popupGhost.modeType === 1 && state.popupGhost.stripIndex === s;
-            drawCartOnSlope(ctx, gx, cartHalf, true, s, isHovered || isPopup);
+            drawCartOnSlope(ctx, gx, cartHalf, true, s, isHovered, isPopup);
             registerSlopeGhostHitBox(rampLeftX, rampLeftY, 0, gx, -26, 28, s, maxStrip);
           }
         }
@@ -4101,7 +4101,7 @@
           const gy = startCenterY + kGhost.x * pxPerCm;
           const isHovered = state.hoveredGhost && state.hoveredGhost.modeType === 2 && state.hoveredGhost.stripIndex === s;
           const isPopup = state.popupGhost && state.popupGhost.modeType === 2 && state.popupGhost.stripIndex === s;
-          drawVerticalCart(ctx, centerX, gy, cartHalfLen, true, s, kGhost.x, isHovered || isPopup);
+          drawVerticalCart(ctx, centerX, gy, cartHalfLen, true, s, kGhost.x, isHovered, isPopup);
           registerFreeGhostHitBox(centerX, gy, 26, s, maxStrip);
         }
       }
@@ -4189,9 +4189,9 @@
       drawVectorArrow(ctx, (x1 + x2) / 2, (y1 + y2) / 2, x1, y1, color, width);
     }
 
-    function drawCartOnSlope(ctx, cx, halfLen, isGhost, stripNum, isHighlighted) {
+    function drawCartOnSlope(ctx, cx, halfLen, isGhost, stripNum, isHighlighted, isPopup = false) {
       ctx.save();
-      ctx.globalAlpha = isGhost ? (isHighlighted ? 0.85 : 0.32) : 1.0;
+      ctx.globalAlpha = isGhost ? (isPopup ? 1.0 : isHighlighted ? 0.82 : 0.32) : 1.0;
 
       ctx.fillStyle = '#cbd5e1';
       ctx.beginPath();
@@ -4199,17 +4199,27 @@
       ctx.arc(cx + halfLen - 10, -15, 5, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = isGhost ? (isHighlighted ? '#fde047' : '#38bdf8') : '#2563eb';
-      ctx.strokeStyle = isHighlighted ? '#facc15' : '#93c5fd';
-      ctx.lineWidth = isHighlighted ? 2.8 : 2;
-      ctx.fillRect(cx - halfLen, -34, halfLen * 2, 16);
+      if (isGhost && isPopup) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(250, 204, 21, 0.9)';
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect(cx - halfLen, -34, halfLen * 2, 16);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = isGhost ? (isHighlighted ? '#7dd3fc' : '#38bdf8') : '#2563eb';
+        ctx.fillRect(cx - halfLen, -34, halfLen * 2, 16);
+      }
+      ctx.strokeStyle = isPopup ? '#facc15' : (isHighlighted ? '#7dd3fc' : '#93c5fd');
+      ctx.lineWidth = isPopup ? 3.0 : (isHighlighted ? 2.4 : 2);
       ctx.strokeRect(cx - halfLen, -34, halfLen * 2, 16);
 
-      if (isGhost && stripNum > 0) {
-        ctx.globalAlpha = 0.95;
-        ctx.fillStyle = isHighlighted ? '#fde047' : '#38bdf8';
+      if (isGhost && (stripNum > 0 || isPopup)) {
+        ctx.globalAlpha = 0.98;
+        ctx.fillStyle = isPopup ? '#fde047' : (isHighlighted ? '#7dd3fc' : '#38bdf8');
         ctx.font = 'bold 11px sans-serif';
-        ctx.fillText(CIRCLED_NUMS[stripNum] || `(${stripNum})`, cx - 6, -40);
+        const lbl = stripNum === 0 ? 'A' : (CIRCLED_NUMS[stripNum] || `(${stripNum})`);
+        ctx.fillText(lbl, cx - 6, -40);
       } else if (!isGhost) {
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 11px sans-serif';
@@ -4218,9 +4228,9 @@
       ctx.restore();
     }
 
-    function drawVerticalCart(ctx, cx, cy, halfLen, isGhost, stripNum, distCm, isHighlighted) {
+    function drawVerticalCart(ctx, cx, cy, halfLen, isGhost, stripNum, distCm, isHighlighted, isPopup = false) {
       ctx.save();
-      ctx.globalAlpha = isGhost ? (isHighlighted ? 0.88 : 0.32) : 1.0;
+      ctx.globalAlpha = isGhost ? (isPopup ? 1.0 : isHighlighted ? 0.85 : 0.32) : 1.0;
 
       ctx.fillStyle = '#cbd5e1';
       ctx.beginPath();
@@ -4228,20 +4238,30 @@
       ctx.arc(cx - 13, cy + 12, 4.5, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = isGhost ? (isHighlighted ? '#fde047' : '#fb923c') : '#ea580c';
-      ctx.strokeStyle = isHighlighted ? '#facc15' : '#fed7aa';
-      ctx.lineWidth = isHighlighted ? 2.8 : 2;
-      ctx.fillRect(cx - 10, cy - halfLen, 20, halfLen * 2);
+      if (isGhost && isPopup) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(250, 204, 21, 0.9)';
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect(cx - 10, cy - halfLen, 20, halfLen * 2);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = isGhost ? (isHighlighted ? '#fdba74' : '#fb923c') : '#ea580c';
+        ctx.fillRect(cx - 10, cy - halfLen, 20, halfLen * 2);
+      }
+      ctx.strokeStyle = isPopup ? '#facc15' : (isHighlighted ? '#fdba74' : '#fed7aa');
+      ctx.lineWidth = isPopup ? 3.0 : (isHighlighted ? 2.4 : 2);
       ctx.strokeRect(cx - 10, cy - halfLen, 20, halfLen * 2);
 
-      if (isGhost && stripNum > 0) {
-        ctx.globalAlpha = 0.95;
-        ctx.fillStyle = isHighlighted ? '#fde047' : '#fdba74';
+      if (isGhost && (stripNum > 0 || isPopup)) {
+        ctx.globalAlpha = 0.98;
+        ctx.fillStyle = isPopup ? '#fde047' : (isHighlighted ? '#fed7aa' : '#fdba74');
         ctx.font = 'bold 11px Consolas, sans-serif';
         const dTxt = isFreeMeterMode()
           ? `${(distCm / 100).toFixed(2)}m`
           : `${distCm.toFixed(1)}cm`;
-        ctx.fillText(`${CIRCLED_NUMS[stripNum] || stripNum} (${dTxt})`, cx + 16, cy + halfLen);
+        const lbl = stripNum === 0 ? 'A' : (CIRCLED_NUMS[stripNum] || stripNum);
+        ctx.fillText(`${lbl} (${dTxt})`, cx + 16, cy + halfLen);
       }
       ctx.restore();
     }
