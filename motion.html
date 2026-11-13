@@ -4844,8 +4844,10 @@
       document.getElementById('stripPopupSpeedFormula').textContent =
         `${st.length.toFixed(1)} cm ÷ 0.1 s（= ${(st.avgSpeed / 100).toFixed(2)} m/s）`;
 
+      const t0 = stripIndex * 0.1;
+      const t1 = (stripIndex + 1) * 0.1;
       document.getElementById('stripPopupTimeRange').textContent =
-        `時刻 ${st.t0.toFixed(1)}〜${st.t1.toFixed(1)} s（位置 ${st.startCm.toFixed(1)}〜${st.endCm.toFixed(1)} cm）`;
+        `時刻 ${t0.toFixed(1)}〜${t1.toFixed(1)} s（位置 ${st.startCm.toFixed(1)}〜${st.endCm.toFixed(1)} cm）`;
 
       document.getElementById('btnPrevStrip').disabled = stripIndex <= 0;
       document.getElementById('btnNextStrip').disabled = stripIndex >= hit.totalStrips - 1;
