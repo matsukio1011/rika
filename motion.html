@@ -2352,8 +2352,9 @@
       if (!el) return;
       const modeLabel = state.expMode === 1 ? '実験1:斜面' : state.expMode === 2 ? '自由落下' : '並べて比較';
       const grav = getGravityInfo();
-      const gravBadge = state.gravityKey === 'earth' ? '' : ` / ${grav.shortLabel}`;
-      el.textContent = `${modeLabel} / ${state.timerHz}Hz${gravBadge}`;
+      const gravLabelHtml = state.gravityKey === 'kaio' ? `${KAIO_ICON_HTML}界王星` : grav.shortLabel;
+      const gravBadge = state.gravityKey === 'earth' ? '' : ` / ${gravLabelHtml}`;
+      el.innerHTML = `${modeLabel} / ${state.timerHz}Hz${gravBadge}`;
     }
 
     document.addEventListener('click', (e) => {
