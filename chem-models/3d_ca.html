@@ -1,0 +1,2401 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3Dインタラクティブ化学教科書：原子の構造 (H・Na・Cl・Ca)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Noto Sans JP -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@500;700;900&display=swap" rel="stylesheet">
+    <!-- Three.js & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Noto Sans JP', sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+        canvas:active {
+            cursor: grabbing;
+        }
+        /* Glassmorphism UI panels */
+        .ui-panel {
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+        }
+        .cam-btn {
+            transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .cam-btn:hover {
+            transform: translateY(-2px);
+        }
+        .cam-btn.active {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #ffffff;
+            border-color: #60a5fa;
+            box-shadow: 0 0 18px rgba(37, 99, 235, 0.6);
+        }
+        .elem-btn {
+            transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .elem-btn.active {
+            background: linear-gradient(135deg, #059669, #047857);
+            color: #ffffff;
+            border-color: #34d399;
+            box-shadow: 0 0 16px rgba(16, 185, 129, 0.55);
+        }
+        .shell-pill {
+            transition: all 0.2s ease;
+        }
+        .shell-pill:hover {
+            transform: scale(1.04);
+        }
+        /* 3D Floating Label Overlay */
+        .label-3d {
+            position: absolute;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            transition: opacity 0.2s ease;
+            z-index: 5;
+            white-space: nowrap;
+        }
+        /* Custom scrollbar for info drawer on small screens */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.4);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.4);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Portal Back Link -->
+    <a href="./index.html" class="fixed top-3 left-3 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs md:text-sm font-bold text-slate-200 bg-slate-900/80 hover:bg-slate-800 border border-slate-700/80 backdrop-blur shadow-lg transition hover:text-white" title="理科ラボ ポータルへ戻る">
+        <span>←</span> <span>理科ラボ</span>
+    </a>
+
+    <!-- 3D WebGL Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- 3D Floating Labels Container (Projected from 3D coordinates) -->
+    <div id="labels-container" class=" inset-0 pointer-events-none overflow-hidden z-10"></div>
+
+    <!-- Streamlined Bottom UI: Minimal 1-Line Caption + Compact Floating Pill Bar -->
+    <nav class="fixed bottom-3 md:bottom-5 left-1/2 -translate-x-1/2 z-20 w-[96%] max-w-4xl pointer-events-none flex flex-col items-center gap-2">
+        <!-- Minimal One-Line Status / Caption Tooltip -->
+        <div id="caption-pill" class="ui-panel pointer-events-auto rounded-full px-4 py-1.5 text-xs md:text-sm font-bold text-slate-100 flex items-center gap-2 shadow-lg border border-slate-700/80 max-w-full truncate">
+            <span id="state-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 flex-shrink-0 shadow-[0_0_8px_#34d399]"></span>
+            <span id="caption-text" class="truncate">カルシウム原子 (₂₀Ca) ： 陽子20・中性子20 ／ 電子配置 K(2)・L(8)・M(8)・N(2)</span>
+        </div>
+
+        <!-- Single Sleek Control Pill Bar -->
+        <div class="ui-panel pointer-events-auto rounded-full p-1.5 flex flex-wrap items-center justify-center gap-1 md:gap-1.5 shadow-2xl">
+            <div id="single-mode-controls" class="flex flex-wrap items-center justify-center gap-1 md:gap-1.5">
+                <div class="flex items-center gap-1 bg-slate-900/70 rounded-full p-0.5 border border-slate-700/80">
+                    <button data-element="h" class="elem-btn px-3 py-1 rounded-full text-xs md:text-sm font-black text-slate-300 border border-transparent hover:text-white">
+                        ₁H 水素
+                    </button>
+                    <button data-element="na" class="elem-btn px-3 py-1 rounded-full text-xs md:text-sm font-black text-slate-300 border border-transparent hover:text-white">
+                        ₁₁Na ナトリウム
+                    </button>
+                    <button data-element="cl" class="elem-btn px-3 py-1 rounded-full text-xs md:text-sm font-black text-slate-300 border border-transparent hover:text-white">
+                        ₁₇Cl 塩素
+                    </button>
+                    <button data-element="ca" class="elem-btn active px-3 py-1 rounded-full text-xs md:text-sm font-black text-slate-200 border border-emerald-400/50">
+                        ₂₀Ca カルシウム
+                    </button>
+                </div>
+
+                <div class="h-5 w-[1px] bg-slate-700 mx-0.5 md:mx-1"></div>
+
+                <button data-cam="overview" class="cam-btn active px-3 py-1.5 rounded-full text-xs md:text-sm font-bold bg-slate-800/90 text-slate-200 border border-slate-700/80">
+                    全体
+                </button>
+                <button data-cam="textbook" class="cam-btn px-3 py-1.5 rounded-full text-xs md:text-sm font-bold bg-slate-800/90 text-slate-200 border border-slate-700/80">
+                    教科書
+                </button>
+                <button data-cam="nucleus" class="cam-btn px-3 py-1.5 rounded-full text-xs md:text-sm font-bold bg-slate-800/90 text-slate-200 border border-slate-700/80">
+                    原子核
+                </button>
+                <button data-cam="shells" class="cam-btn px-3 py-1.5 rounded-full text-xs md:text-sm font-bold bg-slate-800/90 text-slate-200 border border-slate-700/80">
+                    電子殻
+                </button>
+
+                <div class="h-5 w-[1px] bg-slate-700 mx-0.5 md:mx-1"></div>
+
+                <button id="btn-ionize-action" class="px-3.5 py-1.5 rounded-full text-xs md:text-sm font-black bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white shadow-md shadow-pink-600/30 transition transform active:scale-95">
+                    ⚡ Ca²⁺ イオン化
+                </button>
+            </div>
+
+            <div id="dual-mode-controls" class="hidden flex flex-wrap items-center justify-center gap-1.5">
+                <div class="flex items-center gap-1 bg-slate-900/70 rounded-full px-2 py-0.5 border border-slate-700/80 text-xs">
+                    <span class="text-slate-400 font-bold">左:</span>
+                    <button data-dual-side="left" data-dual-elem="h" class="dual-elem-btn active px-2 py-0.5 rounded-full font-black text-white bg-emerald-600">H</button>
+                    <button data-dual-side="left" data-dual-elem="na" class="dual-elem-btn px-2 py-0.5 rounded-full font-black text-slate-300 hover:text-white">Na</button>
+                    <button data-dual-side="left" data-dual-elem="cl" class="dual-elem-btn px-2 py-0.5 rounded-full font-black text-slate-300 hover:text-white">Cl</button>
+                    <button data-dual-side="left" data-dual-elem="ca" class="dual-elem-btn px-2 py-0.5 rounded-full font-black text-slate-300 hover:text-white">Ca</button>
+                </div>
+                <div class="flex items-center gap-1 bg-slate-900/70 rounded-full px-2 py-0.5 border border-slate-700/80 text-xs">
+                    <span class="text-slate-400 font-bold">右:</span>
+                    <button data-dual-side="right" data-dual-elem="h" class="dual-elem-btn px-2 py-0.5 rounded-full font-black text-slate-300 hover:text-white">H</button>
+                    <button data-dual-side="right" data-dual-elem="na" class="dual-elem-btn px-2 py-0.5 rounded-full font-black text-slate-300 hover:text-white">Na</button>
+                    <button data-dual-side="right" data-dual-elem="cl" class="dual-elem-btn active px-2 py-0.5 rounded-full font-black text-white bg-emerald-600">Cl</button>
+                    <button data-dual-side="right" data-dual-elem="ca" class="dual-elem-btn px-2 py-0.5 rounded-full font-black text-slate-300 hover:text-white">Ca</button>
+                </div>
+
+                <div class="h-5 w-[1px] bg-slate-700 mx-0.5"></div>
+
+                <button id="btn-hcl-separate" class="hcl-stage-btn active px-3 py-1 rounded-full text-xs md:text-sm font-bold bg-slate-700 text-white border border-slate-500">
+                    別々 (H + Cl)
+                </button>
+                <button id="btn-hcl-bond" class="hcl-stage-btn px-3 py-1 rounded-full text-xs md:text-sm font-black bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white shadow-md">
+                    🔗 共有結合 (HCl)
+                </button>
+                <button id="btn-hcl-ionize" class="hcl-stage-btn px-3 py-1 rounded-full text-xs md:text-sm font-black bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white shadow-md">
+                    ⚡ 電離 (H⁺ + Cl⁻)
+                </button>
+            </div>
+
+            <div class="h-5 w-[1px] bg-slate-700 mx-0.5"></div>
+
+            <button id="btn-dual-mode" class="px-3 py-1.5 rounded-full text-xs md:text-sm font-black bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white shadow-md transition transform active:scale-95">
+                📚 2冊ならべる
+            </button>
+        </div>
+    </nav>
+
+    <script>
+        // ============================================================================
+        // 1. APPLICATION STATE & CONFIGURATION
+        // ============================================================================
+        const STATE = {
+            currentElement: 'ca', // 'ca', 'h', 'cl' (for single mode)
+            currentCamPreset: 'overview',
+            highlightedChapter: 0, // 0: All, 1: Intro, 2: Nucleus, 3: Electron Shells, 4: Ionization
+            isIonized: false,
+            ionizationProgress: 0, // 0.0 (Neutral) -> 1.0 (Ionized)
+            dualMode: false,
+            dualElements: { left: 'h', right: 'cl' },
+            hclStage: 'separate', // 'separate' | 'bonded' | 'ionized'
+            hclBondProgress: 0,   // 0 -> 1 when bonded
+            hclIonizeProgress: 0  // 0 -> 1 when ionized
+        };
+
+        const ELEMENT_DEFS = {
+            ca: {
+                key: 'ca',
+                symbol: 'Ca',
+                name: 'カルシウム',
+                atomicNumber: 20,
+                subscript: '₂₀',
+                periodGroup: '第4周期・2族',
+                massNumber: 40,
+                protons: 20,
+                neutrons: 20,
+                nucleonRadius: 0.27,
+                ionSymbol: 'Ca²⁺',
+                ionMode: 'lose',
+                ionChargeLabel: '2価の陽イオン (Ca²⁺)',
+                ionChargeShort: '＋2 (陽イオン)',
+                valenceShellIdx: 3, // N shell
+                ejectDistance: 6.5,
+                electronConfigLabel: 'K(2)・L(8)・M(8)・N(2)',
+                ionElectronConfigLabel: 'K(2)・L(8)・M(8)',
+                pageNumbers: ['P. 24', 'P. 25'],
+                sec1Bullets: [
+                    '● 原子番号 20（アルカリ土類金属）の代表的な元素',
+                    '● 中心に正電荷の「原子核」、周囲に4層の「電子殻」',
+                    '● 陽子20個と電子20個で、原子全体は電気的に中性'
+                ],
+                neutralFormula: '電気的中性： 陽子20個(＋20) ＋ 電子20個(－20) ＝ 電荷 0',
+                protonBullets: ['・＋1 の正電荷をもつ（赤球）', '・陽子の数が原子番号(20)を決定'],
+                neutronBullets: ['・電荷0の中性粒子（青球）', '・陽子間の反発を抑え核を安定化'],
+                nucleusNotes: [
+                    '★ 質量数 40 ＝ 陽子20個 ＋ 中性子20個（原子の質量のほぼ全てが集中）',
+                    '★ 陽子と中性子は強い「核力」で中心に隙間なく結合しています'
+                ],
+                sec3Title: '3. 電子殻の4層構造（球殻モデルと電子配置）',
+                sec3Subtitle: '● 電子は平面の円ではなく、4層の「球殻（シェル）」上を3次元的に飛び回ります',
+                sec4Bullets: [
+                    '● 最外殻（N殻）の価電子2個は原子核から遠く、外へ放出されやすい',
+                    '● 2個放出されると、内側の安定したM殻（8個）が新たな最外殻になる',
+                    '● 陽子20個(＋20)と電子18個(－18)で、＋2の陽イオン(Ca²⁺)になる'
+                ],
+                ionReactionFormula: 'Ca (K2・L8・M8・N2)  →  Ca²⁺ (K2・L8・M8) ＋ 2e⁻',
+                rightTitle: '立体図解：カルシウム原子の4層球殻モデル',
+                ionButtonNeutral: '⚡ Ca²⁺ イオン化',
+                ionButtonIonized: '↺ Ca 原子に戻す',
+                captions: {
+                    overview: 'カルシウム原子 (₂₀Ca) ： 陽子20・中性子20 ／ 電子配置 K(2)・L(8)・M(8)・N(2)',
+                    textbook: '左ページの1〜4の枠をクリックすると、教科書の該当項目へカメラが移動します',
+                    nucleus: '原子核 ： 陽子20個 (赤・+1) と 中性子20個 (青・電荷0) が核力で固く結合',
+                    shells: '電子殻の4層構造 ： 内側から K殻(2)・L殻(8)・M殻(8)・N殻(2) の同心球殻',
+                    ionization: 'イオン化 (Ca → Ca²⁺ + 2e⁻) ： 最外殻(N殻)の価電子2個が放出され安定した陽イオンへ',
+                    ionizedActive: 'カルシウムイオン (Ca²⁺) ： N殻の価電子2個が放出され、安定したM殻(8個)が最外殻に！'
+                },
+                shells: [
+                    {
+                        name: 'K殻', shortLabel: 'K', quantumN: 1, electronCount: 2, radius: 2.35,
+                        hex: 0xf59e0b, electronHex: 0xfbbf24, badgeBg: '#d97706',
+                        cardMax: '最大2個', cardNote: '最内殻・閉殻', cardBg: '#fef3c7', cardBorder: '#f59e0b', dot: '#f59e0b',
+                        desc: 'K殻 (第1殻・最大2個)：最も内側の球殻で2個の電子が運動しています'
+                    },
+                    {
+                        name: 'L殻', shortLabel: 'L', quantumN: 2, electronCount: 8, radius: 3.75,
+                        hex: 0x16a34a, electronHex: 0x22c55e, badgeBg: '#15803d',
+                        cardMax: '最大8個', cardNote: '第2殻・閉殻', cardBg: '#dcfce7', cardBorder: '#16a34a', dot: '#16a34a',
+                        desc: 'L殻 (第2殻・最大8個)：8個の電子が球面上に3次元的に分布し閉殻となっています'
+                    },
+                    {
+                        name: 'M殻', shortLabel: 'M', quantumN: 3, electronCount: 8, radius: 5.25,
+                        hex: 0x4f46e5, electronHex: 0x6366f1, badgeBg: '#4338ca',
+                        cardMax: '最大18個', cardNote: '8個で安定化', cardBg: '#e0e7ff', cardBorder: '#4f46e5', dot: '#4f46e5',
+                        desc: 'M殻 (第3殻)：8個の電子が入り、Ca²⁺イオン化後はこの安定した殻が最外殻になります'
+                    },
+                    {
+                        name: 'N殻', shortLabel: 'N', quantumN: 4, electronCount: 2, radius: 6.85,
+                        hex: 0xff007f, electronHex: 0xff4da6, badgeBg: '#db2777',
+                        cardMax: '価電子2個', cardNote: '最外殻(放出)', cardBg: '#fce7f3', cardBorder: '#ec4899', dot: '#ff007f',
+                        desc: 'N殻 (最外殻)：2個の価電子があり、放出されてCa²⁺陽イオンになりやすい性質を持ちます'
+                    }
+                ]
+            },
+            h: {
+                key: 'h',
+                symbol: 'H',
+                name: '水素',
+                atomicNumber: 1,
+                subscript: '₁',
+                periodGroup: '第1周期・1族',
+                massNumber: 1,
+                protons: 1,
+                neutrons: 0,
+                nucleonRadius: 0.42,
+                ionSymbol: 'H⁺',
+                ionMode: 'lose',
+                ionChargeLabel: '1価の陽イオン (H⁺)',
+                ionChargeShort: '＋1 (陽イオン)',
+                valenceShellIdx: 0, // K shell
+                ejectDistance: 5.0,
+                electronConfigLabel: 'K(1)',
+                ionElectronConfigLabel: '電子0個 (陽子のみ)',
+                pageNumbers: ['P. 10', 'P. 11'],
+                sec1Bullets: [
+                    '● 原子番号 1（最も軽く、宇宙で最も多い非金属元素）',
+                    '● 中心に陽子1個だけの「原子核」、周囲に1層の「K殻」',
+                    '● 陽子1個と電子1個で、原子全体は電気的に中性'
+                ],
+                neutralFormula: '電気的中性： 陽子1個(＋1) ＋ 電子1個(－1) ＝ 電荷 0',
+                protonBullets: ['・＋1 の正電荷をもつ（赤球）', '・陽子1個が原子番号(1)を決定'],
+                neutronBullets: ['・通常の水素(¹H)には中性子が0個', '・陽子1個だけで原子核をつくる'],
+                nucleusNotes: [
+                    '★ 質量数 1 ＝ 陽子1個 ＋ 中性子0個（最も単純で軽い原子核です）',
+                    '★ 水素の原子核は陽子1個だけのため、陽子同士の反発がありません'
+                ],
+                sec3Title: '3. 電子殻の1層構造（K殻のみの最も単純なモデル）',
+                sec3Subtitle: '● 水素は電子が1個だけなので、最も内側の「K殻」だけを使います',
+                sec4Bullets: [
+                    '● 最外殻（K殻）の価電子1個が放出されると、電子が0個になる',
+                    '● 残るのは中心の陽子（p⁺）1個だけ ＝ 水素イオン (H⁺)',
+                    '● 酸性の水溶液（塩酸など）の正体がこの H⁺ イオンです'
+                ],
+                ionReactionFormula: 'H (K1)  →  H⁺ (陽子1個・電子0) ＋ e⁻',
+                rightTitle: '立体図解：水素原子のK殻球殻モデル',
+                ionButtonNeutral: '⚡ H⁺ イオン化',
+                ionButtonIonized: '↺ H 原子に戻す',
+                captions: {
+                    overview: '水素原子 (₁H) ： 陽子1・中性子0 ／ 電子配置 K(1)',
+                    textbook: '左ページの1〜4の枠をクリックすると、教科書の該当項目へカメラが移動します',
+                    nucleus: '原子核 ： 陽子1個 (赤・+1) のみで構成（通常の水素 ¹H には中性子なし）',
+                    shells: '電子殻の1層構造 ： 最も内側の K殻(1) に電子が1個だけ運動しています',
+                    ionization: 'イオン化 (H → H⁺ + e⁻) ： K殻の電子1個が放出され、陽子1個だけの H⁺ イオンへ',
+                    ionizedActive: '水素イオン (H⁺) ： K殻の電子1個が放出され、陽子1個だけの＋1の陽イオンに！'
+                },
+                shells: [
+                    {
+                        name: 'K殻', shortLabel: 'K', quantumN: 1, electronCount: 1, radius: 2.35,
+                        hex: 0xf59e0b, electronHex: 0xfbbf24, badgeBg: '#d97706',
+                        cardMax: '最大2個', cardNote: '最内殻・最外殻', cardBg: '#fef3c7', cardBorder: '#f59e0b', dot: '#f59e0b',
+                        desc: 'K殻 (第1殻・最大2個)：水素は電子が1個だけこのK殻を運動しています'
+                    }
+                ]
+            },
+            na: {
+                key: 'na',
+                symbol: 'Na',
+                name: 'ナトリウム',
+                atomicNumber: 11,
+                subscript: '₁₁',
+                periodGroup: '第3周期・1族',
+                massNumber: 23,
+                protons: 11,
+                neutrons: 12,
+                nucleonRadius: 0.29,
+                ionSymbol: 'Na⁺',
+                ionMode: 'lose',
+                ionChargeLabel: '1価の陽イオン (Na⁺)',
+                ionChargeShort: '＋1 (陽イオン)',
+                valenceShellIdx: 2, // M shell
+                ejectDistance: 5.8,
+                electronConfigLabel: 'K(2)・L(8)・M(1)',
+                ionElectronConfigLabel: 'K(2)・L(8)',
+                pageNumbers: ['P. 16', 'P. 17'],
+                sec1Bullets: [
+                    '● 原子番号 11（アルカリ金属）の代表的な金属元素',
+                    '● 中心に正電荷の「原子核」、周囲に3層の「電子殻」',
+                    '● 陽子11個と電子11個で、原子全体は電気的に中性'
+                ],
+                neutralFormula: '電気的中性： 陽子11個(＋11) ＋ 電子11個(－11) ＝ 電荷 0',
+                protonBullets: ['・＋1 の正電荷をもつ（赤球）', '・陽子の数が原子番号(11)を決定'],
+                neutronBullets: ['・電荷0の中性粒子（青球）', '・陽子間の反発を抑え核を安定化'],
+                nucleusNotes: [
+                    '★ 質量数 23 ＝ 陽子11個 ＋ 中性子12個（原子の質量のほぼ全てが集中）',
+                    '★ 陽子と中性子は強い「核力」で中心に隙間なく結合しています'
+                ],
+                sec3Title: '3. 電子殻の3層構造（球殻モデルと電子配置）',
+                sec3Subtitle: '● 電子は平面の円ではなく、3層の「球殻（シェル）」上を3次元的に飛び回ります',
+                sec4Bullets: [
+                    '● 最外殻（M殻）の価電子1個は原子核から遠く、外へ放出されやすい',
+                    '● 1個放出されると、内側の安定したL殻（8個）が新たな最外殻になる',
+                    '● 陽子11個(＋11)と電子10個(－10)で、＋1の陽イオン(Na⁺)になる'
+                ],
+                ionReactionFormula: 'Na (K2・L8・M1)  →  Na⁺ (K2・L8) ＋ e⁻',
+                rightTitle: '立体図解：ナトリウム原子の3層球殻モデル',
+                ionButtonNeutral: '⚡ Na⁺ イオン化',
+                ionButtonIonized: '↺ Na 原子に戻す',
+                captions: {
+                    overview: 'ナトリウム原子 (₁₁Na) ： 陽子11・中性子12 ／ 電子配置 K(2)・L(8)・M(1)',
+                    textbook: '左ページの1〜4の枠をクリックすると、教科書の該当項目へカメラが移動します',
+                    nucleus: '原子核 ： 陽子11個 (赤・+1) と 中性子12個 (青・電荷0) が核力で固く結合',
+                    shells: '電子殻の3層構造 ： 内側から K殻(2)・L殻(8)・M殻(1) の同心球殻',
+                    ionization: 'イオン化 (Na → Na⁺ + e⁻) ： 最外殻(M殻)の価電子1個が放出され安定した陽イオンへ',
+                    ionizedActive: 'ナトリウムイオン (Na⁺) ： M殻の価電子1個が放出され、安定したL殻(8個)が最外殻に！'
+                },
+                shells: [
+                    {
+                        name: 'K殻', shortLabel: 'K', quantumN: 1, electronCount: 2, radius: 2.35,
+                        hex: 0xf59e0b, electronHex: 0xfbbf24, badgeBg: '#d97706',
+                        cardMax: '最大2個', cardNote: '最内殻・閉殻', cardBg: '#fef3c7', cardBorder: '#f59e0b', dot: '#f59e0b',
+                        desc: 'K殻 (第1殻・最大2個)：最も内側の球殻で2個の電子が運動しています'
+                    },
+                    {
+                        name: 'L殻', shortLabel: 'L', quantumN: 2, electronCount: 8, radius: 3.75,
+                        hex: 0x16a34a, electronHex: 0x22c55e, badgeBg: '#15803d',
+                        cardMax: '最大8個', cardNote: '8個で安定化', cardBg: '#dcfce7', cardBorder: '#16a34a', dot: '#16a34a',
+                        desc: 'L殻 (第2殻・最大8個)：8個の電子が入り、Na⁺イオン化後はこの安定した殻が最外殻になります'
+                    },
+                    {
+                        name: 'M殻', shortLabel: 'M', quantumN: 3, electronCount: 1, radius: 5.25,
+                        hex: 0x4f46e5, electronHex: 0x6366f1, badgeBg: '#4338ca',
+                        cardMax: '価電子1個', cardNote: '最外殻(放出)', cardBg: '#fce7f3', cardBorder: '#ec4899', dot: '#ff007f',
+                        desc: 'M殻 (最外殻)：1個の価電子があり、放出されてNa⁺陽イオンになりやすい性質を持ちます'
+                    }
+                ]
+            },
+            cl: {
+                key: 'cl',
+                symbol: 'Cl',
+                name: '塩素',
+                atomicNumber: 17,
+                subscript: '₁₇',
+                periodGroup: '第3周期・17族',
+                massNumber: 35,
+                protons: 17,
+                neutrons: 18,
+                nucleonRadius: 0.27,
+                ionSymbol: 'Cl⁻',
+                ionMode: 'gain',
+                ionChargeLabel: '1価の陰イオン (Cl⁻)',
+                ionChargeShort: '－1 (陰イオン)',
+                valenceShellIdx: 2, // M shell
+                ejectDistance: 5.5,
+                electronConfigLabel: 'K(2)・L(8)・M(7)',
+                ionElectronConfigLabel: 'K(2)・L(8)・M(8)',
+                pageNumbers: ['P. 20', 'P. 21'],
+                sec1Bullets: [
+                    '● 原子番号 17（ハロゲン元素）の代表的な非金属元素',
+                    '● 中心に正電荷の「原子核」、周囲に3層の「電子殻」',
+                    '● 陽子17個と電子17個で、原子全体は電気的に中性'
+                ],
+                neutralFormula: '電気的中性： 陽子17個(＋17) ＋ 電子17個(－17) ＝ 電荷 0',
+                protonBullets: ['・＋1 の正電荷をもつ（赤球）', '・陽子の数が原子番号(17)を決定'],
+                neutronBullets: ['・電荷0の中性粒子（青球）', '・陽子間の反発を抑え核を安定化'],
+                nucleusNotes: [
+                    '★ 質量数 35 ＝ 陽子17個 ＋ 中性子18個（原子の質量のほぼ全てが集中）',
+                    '★ 陽子と中性子は強い「核力」で中心に隙間なく結合しています'
+                ],
+                sec3Title: '3. 電子殻の3層構造（球殻モデルと電子配置）',
+                sec3Subtitle: '● 電子は平面の円ではなく、3層の「球殻（シェル）」上を3次元的に飛び回ります',
+                sec4Bullets: [
+                    '● 最外殻（M殻）に電子が7個あり、あと1個取り込むと安定な8個になる',
+                    '● 外部から電子(e⁻)を1個受け取ると、M殻が8個になり安定化する',
+                    '● 陽子17個(＋17)と電子18個(－18)で、－1の陰イオン(Cl⁻)になる'
+                ],
+                ionReactionFormula: 'Cl (K2・L8・M7) ＋ e⁻  →  Cl⁻ (K2・L8・M8)',
+                rightTitle: '立体図解：塩素原子の3層球殻モデル',
+                ionButtonNeutral: '⚡ Cl⁻ イオン化',
+                ionButtonIonized: '↺ Cl 原子に戻す',
+                captions: {
+                    overview: '塩素原子 (₁₇Cl) ： 陽子17・中性子18 ／ 電子配置 K(2)・L(8)・M(7)',
+                    textbook: '左ページの1〜4の枠をクリックすると、教科書の該当項目へカメラが移動します',
+                    nucleus: '原子核 ： 陽子17個 (赤・+1) と 中性子18個 (青・電荷0) が核力で固く結合',
+                    shells: '電子殻の3層構造 ： 内側から K殻(2)・L殻(8)・M殻(7) の同心球殻',
+                    ionization: 'イオン化 (Cl + e⁻ → Cl⁻) ： 外から電子を1個受け取り、M殻が8個で安定した陰イオンへ',
+                    ionizedActive: '塩化物イオン (Cl⁻) ： 外部から電子を1個受け取り、M殻(8個)が安定化しました！'
+                },
+                shells: [
+                    {
+                        name: 'K殻', shortLabel: 'K', quantumN: 1, electronCount: 2, radius: 2.35,
+                        hex: 0xf59e0b, electronHex: 0xfbbf24, badgeBg: '#d97706',
+                        cardMax: '最大2個', cardNote: '最内殻・閉殻', cardBg: '#fef3c7', cardBorder: '#f59e0b', dot: '#f59e0b',
+                        desc: 'K殻 (第1殻・最大2個)：最も内側の球殻で2個の電子が運動しています'
+                    },
+                    {
+                        name: 'L殻', shortLabel: 'L', quantumN: 2, electronCount: 8, radius: 3.75,
+                        hex: 0x16a34a, electronHex: 0x22c55e, badgeBg: '#15803d',
+                        cardMax: '最大8個', cardNote: '第2殻・閉殻', cardBg: '#dcfce7', cardBorder: '#16a34a', dot: '#16a34a',
+                        desc: 'L殻 (第2殻・最大8個)：8個の電子が球面上に3次元的に分布し閉殻となっています'
+                    },
+                    {
+                        name: 'M殻', shortLabel: 'M', quantumN: 3, electronCount: 7, radius: 5.25,
+                        hex: 0x4f46e5, electronHex: 0x6366f1, badgeBg: '#4338ca',
+                        cardMax: 'あと1個で8', cardNote: '最外殻(受取)', cardBg: '#e0e7ff', cardBorder: '#4f46e5', dot: '#4f46e5',
+                        desc: 'M殻 (最外殻)：電子7個。あと1個電子を受け取ると8個になりCl⁻陰イオンになります'
+                    }
+                ]
+            }
+        };
+
+        function getActiveDef() {
+            return ELEMENT_DEFS[STATE.currentElement];
+        }
+
+        // Camera Presets with smooth interpolation targets
+        const CAMERA_PRESETS = {
+            overview: {
+                pos: new THREE.Vector3(0.5, 19.5, 25.5),
+                target: new THREE.Vector3(0.6, 4.2, -0.5),
+                chapter: 0
+            },
+            textbook: {
+                pos: new THREE.Vector3(-8.2, 19.5, 8.2),
+                target: new THREE.Vector3(-8.2, 0.4, -0.2),
+                chapter: 1
+            },
+            nucleus: {
+                pos: new THREE.Vector3(8.2, 9.1, 4.4),
+                target: new THREE.Vector3(8.2, 7.6, 0.0),
+                chapter: 2
+            },
+            shells: {
+                pos: new THREE.Vector3(14.2, 12.8, 13.8),
+                target: new THREE.Vector3(8.2, 7.6, 0.0),
+                chapter: 3
+            },
+            ionization: {
+                pos: new THREE.Vector3(8.5, 11.5, 16.5),
+                target: new THREE.Vector3(8.2, 7.6, 0.0),
+                chapter: 4
+            },
+            dualOverview: {
+                pos: new THREE.Vector3(0.0, 27.0, 44.0),
+                target: new THREE.Vector3(0.0, 5.2, 0.0),
+                chapter: 0
+            },
+            dualReaction: {
+                pos: new THREE.Vector3(0.0, 14.5, 24.5),
+                target: new THREE.Vector3(0.0, 8.6, 0.0),
+                chapter: 4
+            }
+        };
+
+        // ============================================================================
+        // 2. THREE.JS SCENE, RENDERER & LIGHTING INITIALIZATION
+        // ============================================================================
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0b1120);
+        // Note: NO scene.fog or post-processing blur so textbook text stays 100% razor-sharp!
+
+        const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 200);
+        camera.position.copy(CAMERA_PRESETS.overview.pos);
+
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            powerPreference: 'high-performance'
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // OrbitControls with smooth damping & ground-parallel (XZ plane) movement
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.06;
+        controls.enablePan = true;
+        controls.screenSpacePanning = false; // Move strictly parallel to the ground (horizontal XZ plane)
+        controls.panSpeed = 1.15;
+        controls.maxPolarAngle = Math.PI * 0.49; // Prevent going underneath the desk
+        controls.minDistance = 1.8;
+        controls.maxDistance = 95;
+        controls.target.copy(CAMERA_PRESETS.overview.target);
+
+        // Cancel automatic camera transition if user manually grabs the scene
+        let camTransition = {
+            active: false,
+            startTime: 0,
+            duration: 1100,
+            startPos: new THREE.Vector3(),
+            endPos: new THREE.Vector3(),
+            startTarget: new THREE.Vector3(),
+            endTarget: new THREE.Vector3()
+        };
+        controls.addEventListener('start', () => {
+            camTransition.active = false;
+        });
+
+        // Balanced Studio Lighting for Vivid 3D Models
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+        scene.add(ambientLight);
+
+        const mainDirLight = new THREE.DirectionalLight(0xffffff, 0.95);
+        mainDirLight.position.set(14, 28, 18);
+        mainDirLight.castShadow = true;
+        mainDirLight.shadow.mapSize.width = 2048;
+        mainDirLight.shadow.mapSize.height = 2048;
+        mainDirLight.shadow.camera.near = 5;
+        mainDirLight.shadow.camera.far = 90;
+        const d = 42;
+        mainDirLight.shadow.camera.left = -d;
+        mainDirLight.shadow.camera.right = d;
+        mainDirLight.shadow.camera.top = d;
+        mainDirLight.shadow.camera.bottom = -d;
+        mainDirLight.shadow.bias = -0.0005;
+        scene.add(mainDirLight);
+
+        const rimLight1 = new THREE.DirectionalLight(0x38bdf8, 0.55);
+        rimLight1.position.set(-18, 14, -12);
+        scene.add(rimLight1);
+
+        const rimLight2 = new THREE.PointLight(0xf43f5e, 0.6, 30);
+        rimLight2.position.set(8.2, 12, 6);
+        scene.add(rimLight2);
+
+        // ============================================================================
+        // 3. DESK ENVIRONMENT & OPEN 3D TEXTBOOK ARCHITECTURE
+        // ============================================================================
+        // Subtle dark studio desk surface
+        const deskGeo = new THREE.PlaneGeometry(240, 240);
+        const deskMat = new THREE.MeshStandardMaterial({
+            color: 0x0f172a,
+            roughness: 0.85,
+            metalness: 0.1
+        });
+        const deskMesh = new THREE.Mesh(deskGeo, deskMat);
+        deskMesh.rotation.x = -Math.PI / 2;
+        deskMesh.position.y = -0.45;
+        deskMesh.receiveShadow = true;
+        scene.add(deskMesh);
+
+        // Subtle studio grid on the desk
+        const deskGrid = new THREE.GridHelper(160, 64, 0x1e293b, 0x162032);
+        deskGrid.position.y = -0.44;
+        scene.add(deskGrid);
+
+        // Textbook Dimensions
+        const PAGE_W = 15.6;
+        const PAGE_H = 20.0; // Z depth in 3D space
+        const PAGE_THICK = 0.36;
+        const LEFT_PAGE_X = -PAGE_W / 2 - 0.15;  // -7.95
+        const RIGHT_PAGE_X = PAGE_W / 2 + 0.15;  // +7.95
+        const ATOM_CENTER = new THREE.Vector3(RIGHT_PAGE_X + 0.25, 7.6, 0.0);
+        const DUAL_BOOK_OFFSET_X = 18.2;
+
+        // Hardcover Outer Binding (Navy Blue Academic Cover)
+        const coverMat = new THREE.MeshStandardMaterial({
+            color: 0x1e3a8a,
+            roughness: 0.6,
+            metalness: 0.15
+        });
+        const pageEdgeMat = new THREE.MeshStandardMaterial({
+            color: 0xf1efe6,
+            roughness: 0.5
+        });
+        const maxAniso = renderer.capabilities.getMaxAnisotropy();
+
+        function createBookUnit(initialElementKey) {
+            const bookGroup = new THREE.Group();
+            scene.add(bookGroup);
+
+            const leftCover = new THREE.Mesh(new THREE.BoxGeometry(PAGE_W + 0.6, 0.16, PAGE_H + 0.7), coverMat);
+            leftCover.position.set(LEFT_PAGE_X - 0.1, -0.28, 0);
+            leftCover.castShadow = true;
+            leftCover.receiveShadow = true;
+            bookGroup.add(leftCover);
+
+            const rightCover = new THREE.Mesh(new THREE.BoxGeometry(PAGE_W + 0.6, 0.16, PAGE_H + 0.7), coverMat);
+            rightCover.position.set(RIGHT_PAGE_X + 0.1, -0.28, 0);
+            rightCover.castShadow = true;
+            rightCover.receiveShadow = true;
+            bookGroup.add(rightCover);
+
+            const spineGeo = new THREE.CylinderGeometry(0.45, 0.45, PAGE_H + 0.7, 24, 1, false, 0, Math.PI);
+            const spineMesh = new THREE.Mesh(spineGeo, coverMat);
+            spineMesh.rotation.x = Math.PI / 2;
+            spineMesh.rotation.z = Math.PI;
+            spineMesh.position.set(0, -0.15, 0);
+            bookGroup.add(spineMesh);
+
+            const leftPageBlock = new THREE.Mesh(new THREE.BoxGeometry(PAGE_W, PAGE_THICK, PAGE_H), pageEdgeMat);
+            leftPageBlock.position.set(LEFT_PAGE_X, 0, 0);
+            leftPageBlock.castShadow = true;
+            leftPageBlock.receiveShadow = true;
+            bookGroup.add(leftPageBlock);
+
+            const rightPageBlock = new THREE.Mesh(new THREE.BoxGeometry(PAGE_W, PAGE_THICK, PAGE_H), pageEdgeMat);
+            rightPageBlock.position.set(RIGHT_PAGE_X, 0, 0);
+            rightPageBlock.castShadow = true;
+            rightPageBlock.receiveShadow = true;
+            bookGroup.add(rightPageBlock);
+
+            const spineCrease = new THREE.Mesh(
+                new THREE.BoxGeometry(0.32, PAGE_THICK + 0.02, PAGE_H),
+                new THREE.MeshBasicMaterial({ color: 0xcbd5e1 })
+            );
+            spineCrease.position.set(0, 0, 0);
+            bookGroup.add(spineCrease);
+
+            const leftPageCanvas = document.createElement('canvas');
+            leftPageCanvas.width = 2048;
+            leftPageCanvas.height = 2624;
+            const leftCtx = leftPageCanvas.getContext('2d');
+
+            const rightPageCanvas = document.createElement('canvas');
+            rightPageCanvas.width = 2048;
+            rightPageCanvas.height = 2624;
+            const rightCtx = rightPageCanvas.getContext('2d');
+
+            const leftPageTexture = new THREE.CanvasTexture(leftPageCanvas);
+            leftPageTexture.anisotropy = maxAniso;
+            leftPageTexture.minFilter = THREE.LinearMipmapLinearFilter;
+            leftPageTexture.magFilter = THREE.LinearFilter;
+
+            const rightPageTexture = new THREE.CanvasTexture(rightPageCanvas);
+            rightPageTexture.anisotropy = maxAniso;
+            rightPageTexture.minFilter = THREE.LinearMipmapLinearFilter;
+            rightPageTexture.magFilter = THREE.LinearFilter;
+
+            const leftPageSurface = new THREE.Mesh(
+                new THREE.PlaneGeometry(PAGE_W, PAGE_H),
+                new THREE.MeshBasicMaterial({ map: leftPageTexture })
+            );
+            leftPageSurface.rotation.x = -Math.PI / 2;
+            leftPageSurface.position.set(LEFT_PAGE_X, PAGE_THICK / 2 + 0.01, 0);
+            bookGroup.add(leftPageSurface);
+
+            const rightPageSurface = new THREE.Mesh(
+                new THREE.PlaneGeometry(PAGE_W, PAGE_H),
+                new THREE.MeshBasicMaterial({ map: rightPageTexture })
+            );
+            rightPageSurface.rotation.x = -Math.PI / 2;
+            rightPageSurface.position.set(RIGHT_PAGE_X, PAGE_THICK / 2 + 0.01, 0);
+            bookGroup.add(rightPageSurface);
+
+            const atomGroup = new THREE.Group();
+            atomGroup.position.copy(ATOM_CENTER);
+            scene.add(atomGroup);
+
+            const nucleusGroup = new THREE.Group();
+            atomGroup.add(nucleusGroup);
+
+            const shellsRootGroup = new THREE.Group();
+            atomGroup.add(shellsRootGroup);
+
+            return {
+                elementKey: initialElementKey,
+                bookGroup,
+                targetBookX: 0,
+                leftPageCanvas,
+                leftCtx,
+                leftPageTexture,
+                leftPageSurface,
+                rightPageCanvas,
+                rightCtx,
+                rightPageTexture,
+                rightPageSurface,
+                atomGroup,
+                targetAtomPos: ATOM_CENTER.clone(),
+                nucleusGroup,
+                shellsRootGroup,
+                nucleons: [],
+                shellObjects: [],
+                allElectrons: [],
+                labelElements: []
+            };
+        }
+
+        const unit1 = createBookUnit('ca');
+        const unit2 = createBookUnit('cl');
+        unit2.bookGroup.visible = false;
+        unit2.atomGroup.visible = false;
+        const UNITS = [unit1, unit2];
+
+        // Aliases for single-book convenience
+        const leftPageCanvas = unit1.leftPageCanvas;
+        const leftPageSurface = unit1.leftPageSurface;
+
+        // Helper function for rounded rectangles on 2D Canvas
+        function drawRoundRect(ctx, x, y, w, h, r, fillStyle, strokeStyle, lineWidth = 4) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+            if (fillStyle) {
+                ctx.fillStyle = fillStyle;
+                ctx.fill();
+            }
+            if (strokeStyle) {
+                ctx.strokeStyle = strokeStyle;
+                ctx.lineWidth = lineWidth;
+                ctx.stroke();
+            }
+        }
+
+        // Render Left Textbook Page (Crisp #111827 text on bright #fdfbf7 paper)
+        function renderLeftPageTexture(activeChapter = 0, isIonized = false, unit = unit1) {
+            const def = ELEMENT_DEFS[unit.elementKey];
+            const ctx = unit.leftCtx;
+            const W = unit.leftPageCanvas.width;
+            const H = unit.leftPageCanvas.height;
+
+            // 1. Bright Warm White Paper Background
+            ctx.fillStyle = '#fdfbf7';
+            ctx.fillRect(0, 0, W, H);
+
+            // Subtle right spine margin gradient (very narrow so text is completely unaffected)
+            const spineGrad = ctx.createLinearGradient(W - 70, 0, W, 0);
+            spineGrad.addColorStop(0, 'rgba(203, 213, 225, 0)');
+            spineGrad.addColorStop(1, 'rgba(148, 163, 184, 0.35)');
+            ctx.fillStyle = spineGrad;
+            ctx.fillRect(W - 70, 0, 70, H);
+
+            // Outer Page Border Line
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(64, 64, W - 128, H - 128);
+
+            // 2. Top Running Header
+            drawRoundRect(ctx, 110, 100, 470, 74, 16, '#1d4ed8', null);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 38px "Noto Sans JP", sans-serif';
+            ctx.fillText('第2章：物質の構成粒子', 142, 150);
+
+            ctx.fillStyle = '#334155';
+            ctx.font = '700 38px "Noto Sans JP", sans-serif';
+            ctx.fillText('無機化学・原子構造図鑑', 615, 150);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.font = '900 42px "Noto Sans JP", sans-serif';
+            ctx.fillText(def.pageNumbers[0], W - 235, 150);
+
+            // Main Title Banner
+            ctx.fillStyle = '#0f172a';
+            ctx.font = '900 76px "Noto Sans JP", sans-serif';
+            ctx.fillText(`${def.name}原子 (${def.symbol}) の構造`, 110, 268);
+
+            // Accent underline bar
+            ctx.fillStyle = '#2563eb';
+            ctx.fillRect(110, 294, 920, 12);
+            ctx.fillStyle = '#f59e0b';
+            ctx.fillRect(1040, 294, 890, 12);
+
+            // ====================================================================
+            // SECTION 1: 基本データ (Y: 335 -> 765)
+            // ====================================================================
+            const sec1Active = activeChapter === 1;
+            drawRoundRect(
+                ctx, 110, 335, W - 220, 430, 28,
+                sec1Active ? '#eff6ff' : '#ffffff',
+                sec1Active ? '#2563eb' : '#94a3b8',
+                sec1Active ? 10 : 4
+            );
+
+            // Element Tile Card on Left (Enlarged readable labels)
+            drawRoundRect(ctx, 145, 370, 335, 360, 24, '#0f172a', '#3b82f6', 6);
+            ctx.fillStyle = '#fbbf24';
+            ctx.font = '900 50px "Noto Sans JP", sans-serif';
+            ctx.fillText(String(def.atomicNumber), 175, 435);
+            ctx.fillStyle = '#93c5fd';
+            ctx.font = '700 36px "Noto Sans JP", sans-serif';
+            ctx.fillText(def.periodGroup, 250, 432);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 132px "Noto Sans JP", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(def.symbol, 312, 575);
+
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = '900 42px "Noto Sans JP", sans-serif';
+            ctx.fillText(def.name, 312, 642);
+            ctx.fillStyle = '#fde68a';
+            ctx.font = '700 36px "Noto Sans JP", sans-serif';
+            ctx.fillText(`質量数: ${def.massNumber}`, 312, 700);
+            ctx.textAlign = 'left';
+
+            // Section 1 Heading & Crisp Bullet Text
+            ctx.fillStyle = '#1e3a8a';
+            ctx.font = '900 50px "Noto Sans JP", sans-serif';
+            ctx.fillText(`1. ${def.name}原子（${def.subscript}${def.symbol}）の基本構造`, 515, 422);
+
+            ctx.fillStyle = '#111827';
+            ctx.font = '700 41px "Noto Sans JP", sans-serif';
+            def.sec1Bullets.forEach((line, i) => {
+                ctx.fillText(line, 515, 492 + i * 64);
+            });
+
+            // Formula Pill
+            drawRoundRect(ctx, 515, 650, 1370, 86, 18, '#fef3c7', '#f59e0b', 4);
+            ctx.fillStyle = '#78350f';
+            ctx.font = '900 40px "Noto Sans JP", sans-serif';
+            ctx.fillText(def.neutralFormula, 548, 707);
+
+            // ====================================================================
+            // SECTION 2: 原子核（Nucleus）の中身 (Y: 795 -> 1285)
+            // ====================================================================
+            const sec2Active = activeChapter === 2;
+            drawRoundRect(
+                ctx, 110, 795, W - 220, 490, 28,
+                sec2Active ? '#fff1f2' : '#ffffff',
+                sec2Active ? '#e11d48' : '#94a3b8',
+                sec2Active ? 10 : 4
+            );
+
+            ctx.fillStyle = '#9f1239';
+            ctx.font = '900 50px "Noto Sans JP", sans-serif';
+            ctx.fillText(`2. 原子核の中身（陽子${def.protons}個 ＋ 中性子${def.neutrons}個）`, 150, 872);
+
+            // Proton Card
+            drawRoundRect(ctx, 150, 902, 850, 220, 20, '#ffe4e6', '#f43f5e', 5);
+            ctx.beginPath();
+            ctx.arc(232, 1012, 56, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff1e42';
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 50px "Noto Sans JP", sans-serif';
+            ctx.fillText('p⁺', 204, 1030);
+
+            ctx.fillStyle = '#881337';
+            ctx.font = '900 44px "Noto Sans JP", sans-serif';
+            ctx.fillText(`陽子 (Proton) ： ${def.protons}個`, 310, 968);
+            ctx.fillStyle = '#111827';
+            ctx.font = '700 38px "Noto Sans JP", sans-serif';
+            ctx.fillText(def.protonBullets[0], 310, 1030);
+            ctx.fillText(def.protonBullets[1], 310, 1088);
+
+            // Neutron Card
+            drawRoundRect(ctx, 1035, 902, 855, 220, 20, '#dbeafe', '#2563eb', 5);
+            ctx.beginPath();
+            ctx.arc(1117, 1012, 56, 0, Math.PI * 2);
+            ctx.fillStyle = def.neutrons > 0 ? '#0066ff' : '#94a3b8';
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 50px "Noto Sans JP", sans-serif';
+            ctx.fillText('n⁰', 1089, 1030);
+
+            ctx.fillStyle = '#1e3a8a';
+            ctx.font = '900 44px "Noto Sans JP", sans-serif';
+            ctx.fillText(`中性子 (Neutron) ： ${def.neutrons}個`, 1195, 968);
+            ctx.fillStyle = '#111827';
+            ctx.font = '700 38px "Noto Sans JP", sans-serif';
+            ctx.fillText(def.neutronBullets[0], 1195, 1030);
+            ctx.fillText(def.neutronBullets[1], 1195, 1088);
+
+            ctx.fillStyle = '#111827';
+            ctx.font = '700 40px "Noto Sans JP", sans-serif';
+            ctx.fillText(def.nucleusNotes[0], 150, 1185);
+            ctx.fillStyle = '#be123c';
+            ctx.font = '900 40px "Noto Sans JP", sans-serif';
+            ctx.fillText(def.nucleusNotes[1], 150, 1248);
+
+            // ====================================================================
+            // SECTION 3: 電子殻構造 (Y: 1315 -> 1925)
+            // ====================================================================
+            const sec3Active = activeChapter === 3;
+            drawRoundRect(
+                ctx, 110, 1315, W - 220, 610, 28,
+                sec3Active ? '#ecfdf5' : '#ffffff',
+                sec3Active ? '#059669' : '#94a3b8',
+                sec3Active ? 10 : 4
+            );
+
+            ctx.fillStyle = '#065f46';
+            ctx.font = '900 50px "Noto Sans JP", sans-serif';
+            ctx.fillText(def.sec3Title, 150, 1392);
+
+            ctx.fillStyle = '#111827';
+            ctx.font = '700 40px "Noto Sans JP", sans-serif';
+            ctx.fillText(def.sec3Subtitle, 150, 1462);
+
+            def.shells.forEach((sc, idx) => {
+                const cx = 150 + idx * 442;
+                const cy = 1500;
+                drawRoundRect(ctx, cx, cy, 418, 385, 22, sc.cardBg, sc.cardBorder, 6);
+
+                // Colored circle indicator
+                ctx.beginPath();
+                ctx.arc(cx + 54, cy + 68, 28, 0, Math.PI * 2);
+                ctx.fillStyle = sc.dot;
+                ctx.fill();
+
+                ctx.fillStyle = '#0f172a';
+                ctx.font = '900 44px "Noto Sans JP", sans-serif';
+                ctx.fillText(`${sc.name} (n=${sc.quantumN})`, cx + 96, cy + 84);
+
+                ctx.fillStyle = '#111827';
+                ctx.font = '900 76px "Noto Sans JP", sans-serif';
+                ctx.fillText(`${sc.electronCount}個`, cx + 110, cy + 195);
+
+                ctx.fillStyle = '#1e293b';
+                ctx.font = '700 38px "Noto Sans JP", sans-serif';
+                ctx.fillText(`(${sc.cardMax})`, cx + 95, cy + 265);
+
+                ctx.fillStyle = '#0f172a';
+                ctx.font = '900 38px "Noto Sans JP", sans-serif';
+                ctx.fillText(sc.cardNote, cx + 65, cy + 342);
+            });
+
+            if (def.shells.length === 1) {
+                drawRoundRect(ctx, 610, 1500, 1280, 385, 22, '#f8fafc', '#cbd5e1', 4);
+                ctx.fillStyle = '#065f46';
+                ctx.font = '900 42px "Noto Sans JP", sans-serif';
+                ctx.fillText('ポイント：なぜK殻だけでよいの？', 660, 1575);
+                ctx.fillStyle = '#1e293b';
+                ctx.font = '700 38px "Noto Sans JP", sans-serif';
+                ctx.fillText('・K殻は最大2個まで電子が入れる最初の殻です。', 660, 1655);
+                ctx.fillText('・水素は電子を1個しかもたないため、K殻だけで収まります。', 660, 1725);
+                ctx.fillText('・あと1個電子を受け取るか、共有してヘリウム型の安定配置', 660, 1795);
+                ctx.fillText('　（H₂分子など）をつくる性質も持っています。', 660, 1855);
+            } else if (def.key === 'na') {
+                drawRoundRect(ctx, 1476, 1500, 414, 385, 22, '#fce7f3', '#ec4899', 4);
+                ctx.fillStyle = '#9d174d';
+                ctx.font = '900 38px "Noto Sans JP", sans-serif';
+                ctx.fillText('価電子1個を放出！', 1505, 1575);
+                ctx.fillStyle = '#1e293b';
+                ctx.font = '700 34px "Noto Sans JP", sans-serif';
+                ctx.fillText('M殻の1個を手放すと', 1505, 1655);
+                ctx.fillText('内側のL殻(8個)が', 1505, 1715);
+                ctx.fillText('最外殻になって', 1505, 1775);
+                ctx.fillText('安定した Na⁺ に！', 1505, 1835);
+            } else if (def.shells.length === 3) {
+                drawRoundRect(ctx, 1476, 1500, 414, 385, 22, '#fce7f3', '#ec4899', 4);
+                ctx.fillStyle = '#9d174d';
+                ctx.font = '900 38px "Noto Sans JP", sans-serif';
+                ctx.fillText('安定まであと1個！', 1515, 1575);
+                ctx.fillStyle = '#1e293b';
+                ctx.font = '700 34px "Noto Sans JP", sans-serif';
+                ctx.fillText('M殻は8個で安定', 1515, 1655);
+                ctx.fillText('するため、外から', 1515, 1715);
+                ctx.fillText('電子(e⁻)を1個', 1515, 1775);
+                ctx.fillText('受け取り Cl⁻ に！', 1515, 1835);
+            }
+
+            // ====================================================================
+            // SECTION 4: イオン化の仕組み (Y: 1955 -> 2530)
+            // ====================================================================
+            const sec4Active = activeChapter === 4 || isIonized;
+            drawRoundRect(
+                ctx, 110, 1955, W - 220, 575, 28,
+                sec4Active ? '#fdf2f8' : '#ffffff',
+                sec4Active ? '#db2777' : '#94a3b8',
+                sec4Active ? 10 : 4
+            );
+
+            ctx.fillStyle = '#9d174d';
+            ctx.font = '900 50px "Noto Sans JP", sans-serif';
+            ctx.fillText(`4. イオン化の仕組み： ${def.ionChargeLabel} への変化`, 150, 2038);
+
+            ctx.fillStyle = '#111827';
+            ctx.font = '700 41px "Noto Sans JP", sans-serif';
+            def.sec4Bullets.forEach((line, i) => {
+                ctx.fillText(line, 150, 2115 + i * 67);
+            });
+
+            // Reaction Equation Banner
+            drawRoundRect(ctx, 150, 2295, W - 300, 185, 22, '#0f172a', '#ec4899', 6);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 50px "Noto Sans JP", sans-serif';
+            ctx.fillText(def.ionReactionFormula, 195, 2405);
+
+            unit.leftPageTexture.needsUpdate = true;
+        }
+
+        // Render Right Textbook Page Surface (Clean, minimal printed page under the 3D atom)
+        function renderRightPageTexture(isIonized = false, unit = unit1) {
+            const def = ELEMENT_DEFS[unit.elementKey];
+            const ctx = unit.rightCtx;
+            const W = unit.rightPageCanvas.width;
+            const H = unit.rightPageCanvas.height;
+
+            // 1. Bright Warm White Paper Background
+            ctx.fillStyle = '#fdfbf7';
+            ctx.fillRect(0, 0, W, H);
+
+            // Subtle left spine margin gradient
+            const spineGrad = ctx.createLinearGradient(0, 0, 70, 0);
+            spineGrad.addColorStop(0, 'rgba(148, 163, 184, 0.35)');
+            spineGrad.addColorStop(1, 'rgba(203, 213, 225, 0)');
+            ctx.fillStyle = spineGrad;
+            ctx.fillRect(0, 0, 70, H);
+
+            // Outer Page Border Line
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(64, 64, W - 128, H - 128);
+
+            // Top Header
+            drawRoundRect(ctx, 110, 100, 480, 74, 16, '#0f172a', null);
+            ctx.fillStyle = '#38bdf8';
+            ctx.font = '900 38px "Noto Sans JP", sans-serif';
+            ctx.fillText('3D POP-UP MODEL', 150, 150);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.font = '900 42px "Noto Sans JP", sans-serif';
+            ctx.fillText(def.pageNumbers[1], W - 235, 150);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.font = '900 60px "Noto Sans JP", sans-serif';
+            ctx.fillText(def.rightTitle, 110, 255);
+
+            // Accent divider line under header
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillRect(110, 285, W - 220, 4);
+
+            // Clean open white space in the center so the floating 3D model stands out without clutter
+            ctx.fillStyle = '#334155';
+            ctx.font = '700 38px "Noto Sans JP", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('図をドラッグで回転 ／ ページをドラッグ・右ドラッグで地面と平行移動', W / 2, 1815);
+            ctx.textAlign = 'left';
+
+            // Clean 2-Row Color Legend Bar (Enlarged to 42px for effortless reading)
+            drawRoundRect(ctx, 110, 1850, W - 220, 210, 22, '#ffffff', '#94a3b8', 4);
+            const legendItems = [
+                { label: `陽子 (p⁺) × ${def.protons}個`, color: '#ff1744', x: 165, y: 1915 },
+                { label: `中性子 (n⁰) × ${def.neutrons}個`, color: def.neutrons > 0 ? '#0066ff' : '#94a3b8', x: 765, y: 1915 }
+            ];
+            def.shells.forEach((sc, idx) => {
+                const slot = idx + 2;
+                const col = slot % 3;
+                const row = Math.floor(slot / 3);
+                const xPos = col === 0 ? 165 : col === 1 ? 765 : 1395;
+                const yPos = row === 0 ? 1915 : 2005;
+                const labelSuffix = idx === def.valenceShellIdx ? `価電子${sc.electronCount}個` : `電子${sc.electronCount}個`;
+                legendItems.push({
+                    label: `${sc.name} (${labelSuffix})`,
+                    color: sc.dot,
+                    x: xPos,
+                    y: yPos
+                });
+            });
+
+            legendItems.forEach(item => {
+                ctx.beginPath();
+                ctx.arc(item.x + 28, item.y, 26, 0, Math.PI * 2);
+                ctx.fillStyle = item.color;
+                ctx.fill();
+                ctx.fillStyle = '#0f172a';
+                ctx.font = '900 42px "Noto Sans JP", sans-serif';
+                ctx.fillText(item.label, item.x + 72, item.y + 15);
+            });
+
+            // Bottom Comparison Table (Atom vs Ion)
+            drawRoundRect(ctx, 110, 2090, W - 220, 440, 24, '#ffffff', '#94a3b8', 4);
+
+            // Table Header
+            drawRoundRect(ctx, 145, 2125, W - 290, 86, 14, '#1e293b', null);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 40px "Noto Sans JP", sans-serif';
+            ctx.fillText('状態', 185, 2182);
+            ctx.fillText('陽子数', 605, 2182);
+            ctx.fillText(def.shells.length === 1 ? '電子配置 (K殻)' : def.shells.length === 3 ? '電子配置 (K・L・M)' : '電子配置 (K・L・M・N)', 935, 2182);
+            ctx.fillText('全体の電荷', 1575, 2182);
+
+            // Row 1: Neutral Atom
+            drawRoundRect(ctx, 145, 2230, W - 290, 120, 14, !isIonized ? '#fef3c7' : '#f8fafc', !isIonized ? '#f59e0b' : '#cbd5e1', 4);
+            ctx.fillStyle = '#0f172a';
+            ctx.font = '900 42px "Noto Sans JP", sans-serif';
+            ctx.fillText(`${def.symbol} 原子`, 185, 2305);
+            ctx.fillText(`${def.protons}個(＋${def.protons})`, 585, 2305);
+            ctx.fillText(def.electronConfigLabel, 935, 2305);
+            ctx.fillText('0 (中性)', 1595, 2305);
+
+            // Row 2: Ion
+            drawRoundRect(ctx, 145, 2370, W - 290, 120, 14, isIonized ? '#fce7f3' : '#f8fafc', isIonized ? '#ec4899' : '#cbd5e1', 4);
+            ctx.fillStyle = '#9d174d';
+            ctx.font = '900 42px "Noto Sans JP", sans-serif';
+            ctx.fillText(`${def.ionSymbol} イオン`, 185, 2445);
+            ctx.fillText(`${def.protons}個(＋${def.protons})`, 585, 2445);
+            ctx.fillText(def.ionElectronConfigLabel, 935, 2445);
+            ctx.fillText(def.ionChargeShort, 1555, 2445);
+
+            unit.rightPageTexture.needsUpdate = true;
+        }
+
+        // Initial render of both pages, plus re-render once Japanese web fonts finish loading
+        renderLeftPageTexture(0, false, unit1);
+        renderRightPageTexture(false, unit1);
+        renderLeftPageTexture(0, false, unit2);
+        renderRightPageTexture(false, unit2);
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(() => {
+                renderLeftPageTexture(STATE.highlightedChapter, STATE.isIonized, unit1);
+                renderRightPageTexture(STATE.isIonized, unit1);
+                if (STATE.dualMode) {
+                    renderLeftPageTexture(STATE.highlightedChapter, STATE.hclStage === 'ionized', unit2);
+                    renderRightPageTexture(STATE.hclStage === 'ionized', unit2);
+                }
+            });
+        }
+
+        // ============================================================================
+        // 5. 3D POP-UP ATOM MODELS & SHARED COVALENT BOND RING
+        // ============================================================================
+        let interactivePickables = [];
+        const labelsContainer = document.getElementById('labels-container');
+
+        const sharedBondGroup = new THREE.Group();
+        sharedBondGroup.visible = false;
+        scene.add(sharedBondGroup);
+
+        const sharedBondMat = new THREE.MeshBasicMaterial({
+            color: 0xfbbf24,
+            transparent: true,
+            opacity: 0.75
+        });
+        const sharedBondRing = new THREE.Mesh(
+            new THREE.TorusGeometry(1.15, 0.08, 16, 48),
+            sharedBondMat
+        );
+        sharedBondRing.rotation.y = Math.PI / 2;
+        sharedBondGroup.add(sharedBondRing);
+
+        const sharedBondBadge = document.createElement('div');
+        sharedBondBadge.className = 'label-3d px-3 py-1 rounded-full text-xs font-black text-slate-950 bg-amber-300 shadow-lg border-2 border-white';
+        sharedBondBadge.textContent = '🔗 共有電子対 (H−Cl)';
+        sharedBondBadge.style.opacity = '0';
+        labelsContainer.appendChild(sharedBondBadge);
+
+        const protonMat = new THREE.MeshStandardMaterial({
+            color: 0xff1744,
+            emissive: 0x4a0410,
+            roughness: 0.25,
+            metalness: 0.15
+        });
+        const neutronMat = new THREE.MeshStandardMaterial({
+            color: 0x0066ff,
+            emissive: 0x051b4c,
+            roughness: 0.25,
+            metalness: 0.15
+        });
+
+        function clearGroup(group) {
+            while (group.children.length > 0) {
+                group.remove(group.children[0]);
+            }
+        }
+
+        function refreshInteractivePickables() {
+            interactivePickables = [];
+            const activeUnits = STATE.dualMode ? [unit1, unit2] : [unit1];
+            activeUnits.forEach(u => {
+                u.nucleons.forEach(m => interactivePickables.push(m));
+                u.allElectrons.forEach(e => interactivePickables.push(e.mesh));
+            });
+        }
+
+        function rebuildAtomModel(unit = unit1) {
+            const def = ELEMENT_DEFS[unit.elementKey];
+
+            clearGroup(unit.nucleusGroup);
+            clearGroup(unit.shellsRootGroup);
+            unit.labelElements.forEach(item => item.el.remove());
+            unit.nucleons = [];
+            unit.shellObjects = [];
+            unit.allElectrons = [];
+            unit.labelElements = [];
+
+            // ------------------------------------------------------------------------
+            // 5A. NUCLEUS
+            // ------------------------------------------------------------------------
+            const nucleonRadius = def.nucleonRadius;
+            const nucleonGeo = new THREE.SphereGeometry(nucleonRadius, 24, 24);
+            const totalNucleons = def.protons + def.neutrons;
+
+            if (totalNucleons === 1) {
+                const mesh = new THREE.Mesh(nucleonGeo, protonMat);
+                mesh.position.set(0, 0, 0);
+                mesh.castShadow = true;
+                mesh.userData = {
+                    type: 'proton',
+                    basePos: new THREE.Vector3(0, 0, 0),
+                    phase: 0,
+                    caption: `陽子 (Proton, p⁺) ： 正電荷(+1)をもつ粒子。${def.name}の原子核は陽子1個のみで構成されています`
+                };
+                unit.nucleusGroup.add(mesh);
+                unit.nucleons.push(mesh);
+            } else {
+                const simPts = [];
+                const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+                for (let i = 0; i < totalNucleons; i++) {
+                    const r = i < 8 ? 0.34 : 0.72;
+                    const y = 1 - (i / (totalNucleons - 1)) * 2;
+                    const rad = Math.sqrt(Math.max(0, 1 - y * y));
+                    const theta = goldenAngle * i;
+                    simPts.push(new THREE.Vector3(
+                        Math.cos(theta) * rad * r,
+                        y * r,
+                        Math.sin(theta) * rad * r
+                    ));
+                }
+
+                const minSep = nucleonRadius * 1.82;
+                for (let iter = 0; iter < 180; iter++) {
+                    for (let i = 0; i < totalNucleons; i++) {
+                        simPts[i].multiplyScalar(0.965);
+                    }
+                    for (let i = 0; i < totalNucleons; i++) {
+                        for (let j = i + 1; j < totalNucleons; j++) {
+                            const diff = new THREE.Vector3().subVectors(simPts[i], simPts[j]);
+                            const dist = diff.length();
+                            if (dist < minSep && dist > 0.0001) {
+                                const push = (minSep - dist) * 0.52;
+                                diff.normalize().multiplyScalar(push);
+                                simPts[i].add(diff);
+                                simPts[j].sub(diff);
+                            }
+                        }
+                    }
+                }
+
+                const centerOffset = new THREE.Vector3();
+                simPts.forEach(p => centerOffset.add(p));
+                centerOffset.divideScalar(totalNucleons);
+                simPts.forEach(p => p.sub(centerOffset));
+
+                const isProtonArr = new Array(totalNucleons).fill(false);
+                for (let i = 0; i < totalNucleons; i += 2) isProtonArr[i] = true;
+
+                for (let pass = 0; pass < 80; pass++) {
+                    let improved = false;
+                    for (let i = 0; i < totalNucleons; i++) {
+                        if (!isProtonArr[i]) continue;
+                        for (let j = 0; j < totalNucleons; j++) {
+                            if (isProtonArr[j]) continue;
+
+                            let energyBefore = 0;
+                            let energyAfter = 0;
+                            for (let k = 0; k < totalNucleons; k++) {
+                                if (k === i || k === j || !isProtonArr[k]) continue;
+                                energyBefore += 1 / simPts[i].distanceTo(simPts[k]);
+                                energyAfter += 1 / simPts[j].distanceTo(simPts[k]);
+                            }
+                            if (energyAfter < energyBefore - 0.0001) {
+                                isProtonArr[i] = false;
+                                isProtonArr[j] = true;
+                                improved = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!improved) break;
+                }
+
+                for (let i = 0; i < totalNucleons; i++) {
+                    const isProton = isProtonArr[i];
+                    const mesh = new THREE.Mesh(nucleonGeo, isProton ? protonMat : neutronMat);
+                    mesh.position.copy(simPts[i]);
+                    mesh.castShadow = true;
+                    mesh.userData = {
+                        type: isProton ? 'proton' : 'neutron',
+                        basePos: simPts[i].clone(),
+                        phase: i * 0.77,
+                        caption: isProton
+                            ? `陽子 (Proton, p⁺) ： 正電荷(+1)をもつ粒子。${def.name}の原子核には${def.protons}個あります`
+                            : '中性子 (Neutron, n⁰) ： 電荷をもたない粒子。陽子同士の反発を抑え原子核を安定させます'
+                    };
+                    unit.nucleusGroup.add(mesh);
+                    unit.nucleons.push(mesh);
+                }
+            }
+
+            // ------------------------------------------------------------------------
+            // 5B. CONCENTRIC ELECTRON SHELLS & 3D SPHERICAL ELECTRONS
+            // ------------------------------------------------------------------------
+            def.shells.forEach((cfg, shellIdx) => {
+                const shellGroup = new THREE.Group();
+                unit.shellsRootGroup.add(shellGroup);
+
+                const cutawayPhiStart = Math.PI * 0.18;
+                const cutawayPhiLength = Math.PI * 1.55;
+                const shellCutGeo = new THREE.SphereGeometry(
+                    cfg.radius, 44, 32, cutawayPhiStart, cutawayPhiLength, 0, Math.PI
+                );
+                const shellCutMat = new THREE.MeshPhysicalMaterial({
+                    color: cfg.hex,
+                    transparent: true,
+                    opacity: 0.18,
+                    roughness: 0.18,
+                    metalness: 0.05,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                });
+                shellGroup.add(new THREE.Mesh(shellCutGeo, shellCutMat));
+
+                const edgeGroup = new THREE.Group();
+                const edgeMat = new THREE.LineBasicMaterial({
+                    color: cfg.hex,
+                    transparent: true,
+                    opacity: 0.58
+                });
+
+                const eqPts = [];
+                const segs = 72;
+                for (let s = 0; s <= segs; s++) {
+                    const phi = cutawayPhiStart + (s / segs) * cutawayPhiLength;
+                    eqPts.push(new THREE.Vector3(-cfg.radius * Math.cos(phi), 0, cfg.radius * Math.sin(phi)));
+                }
+                edgeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(eqPts), edgeMat));
+
+                [cutawayPhiStart, cutawayPhiStart + cutawayPhiLength].forEach(boundaryPhi => {
+                    const exactArcPts = [];
+                    for (let s = 0; s <= 48; s++) {
+                        const theta = (s / 48) * Math.PI;
+                        exactArcPts.push(new THREE.Vector3(
+                            -cfg.radius * Math.cos(boundaryPhi) * Math.sin(theta),
+                            cfg.radius * Math.cos(theta),
+                            cfg.radius * Math.sin(boundaryPhi) * Math.sin(theta)
+                        ));
+                    }
+                    edgeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(exactArcPts), edgeMat));
+                });
+
+                shellGroup.add(edgeGroup);
+
+                const eGeo = new THREE.SphereGeometry(0.24, 24, 24);
+                const eMat = new THREE.MeshStandardMaterial({
+                    color: cfg.electronHex,
+                    emissive: cfg.hex,
+                    emissiveIntensity: 0.35,
+                    roughness: 0.2,
+                    metalness: 0.1
+                });
+
+                const haloGeo = new THREE.SphereGeometry(0.38, 16, 16);
+                const haloMat = new THREE.MeshBasicMaterial({
+                    color: cfg.electronHex,
+                    transparent: true,
+                    opacity: 0.28,
+                    depthWrite: false
+                });
+
+                const gAngle = Math.PI * (3 - Math.sqrt(5));
+                for (let i = 0; i < cfg.electronCount; i++) {
+                    const eMesh = new THREE.Mesh(eGeo, eMat);
+                    eMesh.add(new THREE.Mesh(haloGeo, haloMat));
+
+                    const ny = 1 - ((i + 0.5) / cfg.electronCount) * 2;
+                    const nRad = Math.sqrt(Math.max(0, 1 - ny * ny));
+                    const nTheta = i * gAngle + shellIdx * 1.3;
+                    const orbitNormal = new THREE.Vector3(
+                        Math.cos(nTheta) * nRad,
+                        ny,
+                        Math.sin(nTheta) * nRad
+                    ).normalize();
+
+                    const refUp = Math.abs(orbitNormal.y) < 0.85
+                        ? new THREE.Vector3(0, 1, 0)
+                        : new THREE.Vector3(1, 0, 0);
+                    const uVec = new THREE.Vector3().crossVectors(orbitNormal, refUp).normalize();
+                    const vVec = new THREE.Vector3().crossVectors(orbitNormal, uVec).normalize();
+
+                    const ejectDir = new THREE.Vector3(
+                        i === 0 ? 0.78 : -0.72,
+                        0.55,
+                        i === 0 ? 0.35 : -0.42
+                    ).normalize();
+
+                    eMesh.userData = {
+                        type: 'electron',
+                        shellName: cfg.name,
+                        caption: `${cfg.name}の電子 (e⁻) ： ${cfg.desc}`
+                    };
+
+                    shellGroup.add(eMesh);
+
+                    unit.allElectrons.push({
+                        mesh: eMesh,
+                        haloMat,
+                        shellIdx,
+                        baseRadius: cfg.radius,
+                        orbitNormal,
+                        uVec,
+                        vVec,
+                        phase: (i / cfg.electronCount) * Math.PI * 2 + shellIdx * 0.9,
+                        angularSpeed: (1.55 - shellIdx * 0.24) * (0.88 + (i % 3) * 0.14) * (i % 2 === 0 ? 1 : -1),
+                        precessionAngle: i * 1.2,
+                        precessionSpeed: 0.35 + (i % 4) * 0.08,
+                        ejectDir,
+                        isGainedElectron: false
+                    });
+                }
+
+                // For anion-forming elements (e.g., Cl -> Cl-), add the incoming external electron (single mode)
+                if (def.ionMode === 'gain' && shellIdx === def.valenceShellIdx) {
+                    const gainMat = new THREE.MeshStandardMaterial({
+                        color: 0xff4da6,
+                        emissive: 0xff007f,
+                        emissiveIntensity: 0.45,
+                        roughness: 0.2,
+                        metalness: 0.1,
+                        transparent: true,
+                        opacity: 0.45
+                    });
+                    const gainHaloMat = new THREE.MeshBasicMaterial({
+                        color: 0xff4da6,
+                        transparent: true,
+                        opacity: 0.22,
+                        depthWrite: false
+                    });
+                    const gainMesh = new THREE.Mesh(eGeo, gainMat);
+                    gainMesh.add(new THREE.Mesh(haloGeo, gainHaloMat));
+
+                    const orbitNormal = new THREE.Vector3(0.45, 0.72, 0.52).normalize();
+                    const uVec = new THREE.Vector3().crossVectors(orbitNormal, new THREE.Vector3(1, 0, 0)).normalize();
+                    const vVec = new THREE.Vector3().crossVectors(orbitNormal, uVec).normalize();
+                    const ejectDir = new THREE.Vector3(0.75, 0.45, 0.48).normalize();
+
+                    gainMesh.userData = {
+                        type: 'electron',
+                        shellName: cfg.name,
+                        caption: '外から受け取る電子 (e⁻) ： Cl⁻イオンになるときM殻の8個目として取り込まれます'
+                    };
+
+                    shellGroup.add(gainMesh);
+
+                    unit.allElectrons.push({
+                        mesh: gainMesh,
+                        eMat: gainMat,
+                        haloMat: gainHaloMat,
+                        shellIdx,
+                        baseRadius: cfg.radius,
+                        orbitNormal,
+                        uVec,
+                        vVec,
+                        phase: 0.8,
+                        angularSpeed: 1.05,
+                        precessionAngle: 0.5,
+                        precessionSpeed: 0.4,
+                        ejectDir,
+                        isGainedElectron: true
+                    });
+                }
+
+                unit.shellObjects.push({
+                    cfg,
+                    shellIdx,
+                    shellGroup,
+                    shellCutMat,
+                    edgeMat
+                });
+
+                // 3D Floating Label
+                const el = document.createElement('div');
+                el.className = 'label-3d px-2.5 py-0.5 rounded-full text-xs font-black text-white shadow-md border border-white/30';
+                el.style.backgroundColor = cfg.badgeBg;
+                el.textContent = `${cfg.name} (${cfg.electronCount})`;
+                labelsContainer.appendChild(el);
+
+                unit.labelElements.push({
+                    el,
+                    cfg,
+                    shellIdx,
+                    localPos: new THREE.Vector3(0, cfg.radius + 0.32, 0)
+                });
+            });
+
+            refreshInteractivePickables();
+        }
+
+        rebuildAtomModel(unit1);
+        rebuildAtomModel(unit2);
+
+        function getDualReactionPair() {
+            if (!STATE.dualMode) return null;
+            const { left, right } = STATE.dualElements;
+            if ((left === 'h' && right === 'cl') || (left === 'cl' && right === 'h')) return 'hcl';
+            if ((left === 'na' && right === 'cl') || (left === 'cl' && right === 'na')) return 'nacl';
+            return null;
+        }
+
+        function isHclPair() {
+            return getDualReactionPair() !== null;
+        }
+
+        function update3DLabels() {
+            const halfW = window.innerWidth / 2;
+            const halfH = window.innerHeight / 2;
+            const worldPos = new THREE.Vector3();
+            const pairType = getDualReactionPair();
+            const hclActive = pairType !== null;
+
+            UNITS.forEach((unit, uIdx) => {
+                const visibleUnit = uIdx === 0 || STATE.dualMode;
+                const def = ELEMENT_DEFS[unit.elementKey];
+
+                unit.labelElements.forEach(item => {
+                    if (!visibleUnit) {
+                        item.el.style.opacity = '0';
+                        return;
+                    }
+
+                    worldPos.copy(item.localPos).add(unit.atomGroup.position);
+                    worldPos.project(camera);
+
+                    if (worldPos.z > 1.0) {
+                        item.el.style.opacity = '0';
+                        return;
+                    }
+
+                    item.el.style.left = `${(worldPos.x * halfW) + halfW}px`;
+                    item.el.style.top = `${-(worldPos.y * halfH) + halfH}px`;
+
+                    if (STATE.dualMode && hclActive) {
+                        if (def.key === 'na' && item.shellIdx === 1) {
+                            if (STATE.hclStage === 'bonded' || STATE.hclStage === 'ionized') {
+                                item.el.textContent = 'Na⁺ L殻 (8・安定)';
+                                item.el.style.opacity = '0.96';
+                            } else {
+                                item.el.textContent = 'L殻 (8)';
+                                item.el.style.opacity = '0.9';
+                            }
+                        } else if (item.shellIdx === def.valenceShellIdx) {
+                            if (def.key === 'h') {
+                                if (STATE.hclStage === 'ionized') {
+                                    item.el.textContent = 'H⁺ (陽子1・e⁻ 0)';
+                                    item.el.style.opacity = '0.95';
+                                } else if (STATE.hclStage === 'bonded') {
+                                    item.el.textContent = 'K殻 (共有中)';
+                                    item.el.style.opacity = '0.92';
+                                } else {
+                                    item.el.textContent = 'K殻 (1)';
+                                    item.el.style.opacity = '0.92';
+                                }
+                            } else if (def.key === 'na') {
+                                if (STATE.hclStage === 'bonded' || STATE.hclStage === 'ionized') {
+                                    item.el.textContent = 'Na⁺ M殻 (放出・0)';
+                                    item.el.style.opacity = '0.35';
+                                } else {
+                                    item.el.textContent = 'M殻 (1)';
+                                    item.el.style.opacity = '0.92';
+                                }
+                            } else if (def.key === 'cl') {
+                                if (STATE.hclStage === 'ionized' || (pairType === 'nacl' && STATE.hclStage === 'bonded')) {
+                                    item.el.textContent = 'Cl⁻ M殻 (8・安定)';
+                                } else if (STATE.hclStage === 'bonded') {
+                                    item.el.textContent = 'M殻 (共有で8)';
+                                } else {
+                                    item.el.textContent = 'M殻 (7)';
+                                }
+                                item.el.style.opacity = '0.94';
+                            }
+                        } else {
+                            item.el.textContent = `${item.cfg.name} (${item.cfg.electronCount})`;
+                            item.el.style.opacity = '0.9';
+                        }
+                    } else if (!STATE.dualMode && item.shellIdx === def.valenceShellIdx) {
+                        if (def.ionMode === 'gain') {
+                            item.el.textContent = STATE.isIonized
+                                ? `${item.cfg.name} (${item.cfg.electronCount + 1}・安定)`
+                                : `${item.cfg.name} (${item.cfg.electronCount})`;
+                            item.el.style.opacity = '0.94';
+                        } else {
+                            item.el.textContent = STATE.isIonized
+                                ? `${item.cfg.name} (放出・0個)`
+                                : `${item.cfg.name} (${item.cfg.electronCount})`;
+                            item.el.style.opacity = String(1 - STATE.ionizationProgress * 0.65);
+                        }
+                    } else {
+                        item.el.textContent = `${item.cfg.name} (${item.cfg.electronCount})`;
+                        item.el.style.opacity = '0.92';
+                    }
+                });
+            });
+
+            // Shared covalent / ionic bond badge
+            if (STATE.dualMode && hclActive && STATE.hclBondProgress > 0.15) {
+                sharedBondBadge.textContent = pairType === 'nacl' ? '🔗 イオン結合 (Na⁺Cl⁻)' : '🔗 共有電子対 (H−Cl)';
+                worldPos.copy(sharedBondGroup.position).add(new THREE.Vector3(0, 1.9, 0));
+                worldPos.project(camera);
+                if (worldPos.z <= 1.0) {
+                    sharedBondBadge.style.left = `${(worldPos.x * halfW) + halfW}px`;
+                    sharedBondBadge.style.top = `${-(worldPos.y * halfH) + halfH}px`;
+                    sharedBondBadge.style.opacity = String(Math.min(1, STATE.hclBondProgress));
+                } else {
+                    sharedBondBadge.style.opacity = '0';
+                }
+            } else {
+                sharedBondBadge.style.opacity = '0';
+            }
+        }
+
+        // ============================================================================
+        // 7. CAMERA PRESET, ELEMENT SWITCH & IONIZATION CONTROLLERS
+        // ============================================================================
+        function setCaptionText(text) {
+            const capEl = document.getElementById('caption-text');
+            if (capEl) capEl.textContent = text;
+        }
+
+        function getUnitHomeAtomPos(unit) {
+            return new THREE.Vector3(ATOM_CENTER.x + unit.targetBookX, ATOM_CENTER.y, ATOM_CENTER.z);
+        }
+
+        function updateShellMaterialsAndVisibility() {
+            const pairType = getDualReactionPair();
+            const hclActive = pairType !== null;
+            if (STATE.dualMode && hclActive) {
+                const donorUnit = (unit1.elementKey === 'h' || unit1.elementKey === 'na') ? unit1 : unit2;
+                const clUnit = donorUnit === unit1 ? unit2 : unit1;
+                const donorValenceIdx = ELEMENT_DEFS[donorUnit.elementKey].valenceShellIdx;
+                const donorShell = donorUnit.shellObjects[donorValenceIdx];
+                if (donorShell) {
+                    const fadeAmount = donorUnit.elementKey === 'na'
+                        ? Math.max(STATE.hclBondProgress, STATE.hclIonizeProgress)
+                        : STATE.hclIonizeProgress;
+                    const fade = 1.0 - fadeAmount * 0.85;
+                    donorShell.shellCutMat.opacity = 0.18 * fade;
+                    donorShell.edgeMat.opacity = 0.58 * fade;
+                }
+                const clValence = clUnit.shellObjects[2];
+                if (clValence) {
+                    const boost = Math.max(STATE.hclBondProgress, STATE.hclIonizeProgress);
+                    clValence.shellCutMat.opacity = 0.18 + boost * 0.08;
+                    clValence.edgeMat.opacity = 0.58 + boost * 0.25;
+                }
+                return;
+            }
+
+            const unitsToUpdate = STATE.dualMode ? UNITS : [unit1];
+            unitsToUpdate.forEach(unit => {
+                const def = ELEMENT_DEFS[unit.elementKey];
+                const valenceShell = unit.shellObjects[def.valenceShellIdx];
+                if (valenceShell) {
+                    if (def.ionMode === 'gain') {
+                        valenceShell.shellCutMat.opacity = 0.18 + STATE.ionizationProgress * 0.08;
+                        valenceShell.edgeMat.opacity = 0.58 + STATE.ionizationProgress * 0.25;
+                    } else {
+                        const fade = 1.0 - STATE.ionizationProgress * 0.82;
+                        valenceShell.shellCutMat.opacity = 0.18 * fade;
+                        valenceShell.edgeMat.opacity = 0.58 * fade;
+                    }
+                }
+            });
+        }
+
+        function moveToCameraPreset(presetKey) {
+            const preset = CAMERA_PRESETS[presetKey];
+            const def = getActiveDef();
+            if (!preset) return;
+
+            STATE.currentCamPreset = presetKey;
+            STATE.highlightedChapter = preset.chapter;
+
+            document.querySelectorAll('.cam-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.cam === presetKey);
+            });
+
+            if (!STATE.dualMode) {
+                setCaptionText(def.captions[presetKey] || def.captions.overview);
+                renderLeftPageTexture(STATE.highlightedChapter, STATE.isIonized, unit1);
+            }
+
+            const targetPos = preset.pos.clone();
+            if (!STATE.dualMode && presetKey === 'shells') {
+                if (def.key === 'h') targetPos.set(11.4, 10.6, 10.8);
+                else if (def.key === 'cl' || def.key === 'na') targetPos.set(12.8, 11.8, 12.4);
+            }
+
+            camTransition.active = true;
+            camTransition.startTime = performance.now();
+            camTransition.duration = 950;
+            camTransition.startPos.copy(camera.position);
+            camTransition.endPos.copy(targetPos);
+            camTransition.startTarget.copy(controls.target);
+            camTransition.endTarget.copy(preset.target);
+        }
+
+        function toggleIonizationState() {
+            const def = getActiveDef();
+            STATE.isIonized = !STATE.isIonized;
+            STATE.highlightedChapter = 4;
+
+            const btn = document.getElementById('btn-ionize-action');
+            const dot = document.getElementById('state-dot');
+
+            if (STATE.isIonized) {
+                btn.textContent = def.ionButtonIonized;
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-pink-500 flex-shrink-0 shadow-[0_0_8px_#ec4899]';
+                setCaptionText(def.captions.ionizedActive);
+            } else {
+                btn.textContent = def.ionButtonNeutral;
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 flex-shrink-0 shadow-[0_0_8px_#34d399]';
+                setCaptionText(def.captions.overview);
+            }
+
+            renderLeftPageTexture(STATE.highlightedChapter, STATE.isIonized, unit1);
+            renderRightPageTexture(STATE.isIonized, unit1);
+        }
+
+        function switchElement(elemKey) {
+            if (!ELEMENT_DEFS[elemKey] || STATE.currentElement === elemKey) return;
+
+            STATE.currentElement = elemKey;
+            unit1.elementKey = elemKey;
+            STATE.isIonized = false;
+            STATE.ionizationProgress = 0;
+
+            const def = getActiveDef();
+
+            document.querySelectorAll('.elem-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.element === elemKey);
+            });
+
+            const ionBtn = document.getElementById('btn-ionize-action');
+            const dot = document.getElementById('state-dot');
+            ionBtn.textContent = def.ionButtonNeutral;
+            dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 flex-shrink-0 shadow-[0_0_8px_#34d399]';
+
+            rebuildAtomModel(unit1);
+            renderLeftPageTexture(STATE.highlightedChapter, false, unit1);
+            renderRightPageTexture(false, unit1);
+            setCaptionText(def.captions[STATE.currentCamPreset] || def.captions.overview);
+        }
+
+        function updateDualControlsUI() {
+            const singleCtrl = document.getElementById('single-mode-controls');
+            const dualCtrl = document.getElementById('dual-mode-controls');
+            const dualToggleBtn = document.getElementById('btn-dual-mode');
+
+            if (STATE.dualMode) {
+                singleCtrl.classList.add('hidden');
+                dualCtrl.classList.remove('hidden');
+                dualToggleBtn.textContent = '📖 1冊にもどす';
+            } else {
+                singleCtrl.classList.remove('hidden');
+                dualCtrl.classList.add('hidden');
+                dualToggleBtn.textContent = '📚 2冊ならべる';
+            }
+
+            document.querySelectorAll('.dual-elem-btn').forEach(btn => {
+                const side = btn.dataset.dualSide;
+                const elem = btn.dataset.dualElem;
+                const isActive = STATE.dualElements[side] === elem;
+                btn.classList.toggle('active', isActive);
+                btn.classList.toggle('bg-emerald-600', isActive);
+                btn.classList.toggle('text-white', isActive);
+                btn.classList.toggle('text-slate-300', !isActive);
+            });
+
+            const pairType = getDualReactionPair();
+            const hclOk = pairType !== null;
+            const btnSep = document.getElementById('btn-hcl-separate');
+            const btnBond = document.getElementById('btn-hcl-bond');
+            const btnIon = document.getElementById('btn-hcl-ionize');
+            [btnSep, btnBond, btnIon].forEach(b => b.classList.remove('ring-2', 'ring-white'));
+
+            if (pairType === 'nacl') {
+                btnSep.textContent = '別々 (Na + Cl)';
+                btnBond.textContent = '🔗 イオン結合 (NaCl)';
+                btnIon.textContent = '⚡ 電離 (Na⁺ + Cl⁻)';
+            } else {
+                btnSep.textContent = '別々 (H + Cl)';
+                btnBond.textContent = '🔗 共有結合 (HCl)';
+                btnIon.textContent = '⚡ 電離 (H⁺ + Cl⁻)';
+            }
+
+            if (STATE.hclStage === 'separate') btnSep.classList.add('ring-2', 'ring-white');
+            else if (STATE.hclStage === 'bonded') btnBond.classList.add('ring-2', 'ring-white');
+            else if (STATE.hclStage === 'ionized') btnIon.classList.add('ring-2', 'ring-white');
+
+            btnBond.style.opacity = hclOk ? '1' : '0.45';
+            btnIon.style.opacity = hclOk ? '1' : '0.45';
+        }
+
+        function toggleDualMode() {
+            STATE.dualMode = !STATE.dualMode;
+            STATE.isIonized = false;
+            STATE.ionizationProgress = 0;
+            STATE.hclStage = 'separate';
+            STATE.hclBondProgress = 0;
+            STATE.hclIonizeProgress = 0;
+
+            const dot = document.getElementById('state-dot');
+
+            if (STATE.dualMode) {
+                unit1.elementKey = STATE.dualElements.left;
+                unit2.elementKey = STATE.dualElements.right;
+                unit1.targetBookX = -DUAL_BOOK_OFFSET_X;
+                unit2.targetBookX = DUAL_BOOK_OFFSET_X;
+                unit2.bookGroup.visible = true;
+                unit2.atomGroup.visible = true;
+                unit1.targetAtomPos.copy(getUnitHomeAtomPos(unit1));
+                unit2.targetAtomPos.copy(getUnitHomeAtomPos(unit2));
+
+                rebuildAtomModel(unit1);
+                rebuildAtomModel(unit2);
+                renderLeftPageTexture(0, false, unit1);
+                renderRightPageTexture(false, unit1);
+                renderLeftPageTexture(0, false, unit2);
+                renderRightPageTexture(false, unit2);
+
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-indigo-400 flex-shrink-0 shadow-[0_0_8px_#818cf8]';
+                const pairType = getDualReactionPair();
+                setCaptionText(pairType === 'nacl'
+                    ? '2冊モード (Na と Cl) ： 「イオン結合 (NaCl)」や「電離 (Na⁺ + Cl⁻)」を押して反応を観察しよう！'
+                    : pairType === 'hcl'
+                        ? '2冊モード (H と Cl) ： 「共有結合 (HCl)」や「電離 (H⁺ + Cl⁻)」を押して反応を観察しよう！'
+                        : '2冊モード ： 2つの原子を比較中（H と Cl、または Na と Cl を選ぶと結合・電離が見られます）');
+                moveToCameraPreset('dualOverview');
+            } else {
+                unit1.elementKey = STATE.currentElement;
+                unit1.targetBookX = 0;
+                unit1.targetAtomPos.copy(getUnitHomeAtomPos(unit1));
+                unit2.bookGroup.visible = false;
+                unit2.atomGroup.visible = false;
+                sharedBondGroup.visible = false;
+
+                rebuildAtomModel(unit1);
+                renderLeftPageTexture(0, false, unit1);
+                renderRightPageTexture(false, unit1);
+
+                const def = getActiveDef();
+                document.getElementById('btn-ionize-action').textContent = def.ionButtonNeutral;
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 flex-shrink-0 shadow-[0_0_8px_#34d399]';
+                moveToCameraPreset('overview');
+            }
+
+            updateDualControlsUI();
+        }
+
+        function setDualElement(side, elemKey) {
+            if (!ELEMENT_DEFS[elemKey]) return;
+            STATE.dualElements[side] = elemKey;
+            const unit = side === 'left' ? unit1 : unit2;
+            unit.elementKey = elemKey;
+
+            STATE.hclStage = 'separate';
+            STATE.hclBondProgress = 0;
+            STATE.hclIonizeProgress = 0;
+            unit1.targetAtomPos.copy(getUnitHomeAtomPos(unit1));
+            unit2.targetAtomPos.copy(getUnitHomeAtomPos(unit2));
+            sharedBondGroup.visible = false;
+
+            rebuildAtomModel(unit);
+            renderLeftPageTexture(0, false, unit);
+            renderRightPageTexture(false, unit);
+            updateShellMaterialsAndVisibility();
+            updateDualControlsUI();
+
+            const pairType = getDualReactionPair();
+            if (pairType === 'nacl') {
+                setCaptionText('Na と Cl のペアが揃いました！ 「イオン結合 (NaCl)」または「電離 (Na⁺ + Cl⁻)」を押してみよう');
+                moveToCameraPreset('dualOverview');
+            } else if (pairType === 'hcl') {
+                setCaptionText('H と Cl のペアが揃いました！ 「共有結合 (HCl)」または「電離 (H⁺ + Cl⁻)」を押してみよう');
+                moveToCameraPreset('dualOverview');
+            } else {
+                setCaptionText(`左: ${ELEMENT_DEFS[unit1.elementKey].symbol} ／ 右: ${ELEMENT_DEFS[unit2.elementKey].symbol} を比較中（H と Cl、または Na と Cl を選ぶと結合・電離が見られます）`);
+            }
+        }
+
+        function setHclStage(stage) {
+            if (!STATE.dualMode) return;
+            const pairType = getDualReactionPair();
+            if (!pairType) {
+                setCaptionText('結合・電離を見るには、左と右で「H と Cl」または「Na と Cl」を選んでください！');
+                return;
+            }
+
+            STATE.hclStage = stage;
+            const donorUnit = (unit1.elementKey === 'h' || unit1.elementKey === 'na') ? unit1 : unit2;
+            const clUnit = donorUnit === unit1 ? unit2 : unit1;
+            const donorSideSign = (donorUnit === unit1) ? -1 : 1;
+            const dot = document.getElementById('state-dot');
+
+            if (stage === 'separate') {
+                unit1.targetAtomPos.copy(getUnitHomeAtomPos(unit1));
+                unit2.targetAtomPos.copy(getUnitHomeAtomPos(unit2));
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-indigo-400 flex-shrink-0 shadow-[0_0_8px_#818cf8]';
+                setCaptionText(pairType === 'nacl'
+                    ? '反応前 (Na + Cl) ： ナトリウム原子(M殻 e⁻ 1) と 塩素原子(M殻 e⁻ 7) がそれぞれの教科書の上にあります'
+                    : '反応前 (H + Cl) ： 水素原子(e⁻ 1) と 塩素原子(M殻 e⁻ 7) がそれぞれの教科書の上にあります');
+                moveToCameraPreset('dualOverview');
+            } else if (stage === 'bonded') {
+                if (pairType === 'nacl') {
+                    donorUnit.targetAtomPos.set(donorSideSign * 4.5, 9.0, 0);
+                    clUnit.targetAtomPos.set(-donorSideSign * 4.5, 9.0, 0);
+                    sharedBondGroup.position.set(0, 9.0, 0);
+                    dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 flex-shrink-0 shadow-[0_0_8px_#fbbf24]';
+                    setCaptionText('🔗 イオン結合 (NaCl 塩化ナトリウム) ： NaのM殻電子1個がClへ移り、Na⁺とCl⁻が静電気力で結合！');
+                } else {
+                    donorUnit.targetAtomPos.set(donorSideSign * 3.3, 9.0, 0);
+                    clUnit.targetAtomPos.set(-donorSideSign * 3.3, 9.0, 0);
+                    sharedBondGroup.position.set(0, 9.0, 0);
+                    dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 flex-shrink-0 shadow-[0_0_8px_#fbbf24]';
+                    setCaptionText('🔗 共有結合 (HCl 塩化水素) ： HとClが電子を1個ずつ出し合い、共有電子対をつくって安定！');
+                }
+                moveToCameraPreset('dualReaction');
+            } else if (stage === 'ionized') {
+                donorUnit.targetAtomPos.set(donorSideSign * 9.5, 9.0, 0);
+                clUnit.targetAtomPos.set(-donorSideSign * 9.5, 9.0, 0);
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-pink-500 flex-shrink-0 shadow-[0_0_8px_#ec4899]';
+                setCaptionText(pairType === 'nacl'
+                    ? '⚡ 電離 (NaCl → Na⁺ + Cl⁻) ： 水に溶けると Na⁺ (陽イオン) と Cl⁻ (陰イオン) に分かれて移動します！'
+                    : '⚡ 電離 (HCl → H⁺ + Cl⁻) ： 水中でHが電子をClに渡して H⁺ (陽イオン) と Cl⁻ (陰イオン) に分かれる！');
+                moveToCameraPreset('dualReaction');
+            }
+
+            updateDualControlsUI();
+        }
+
+        // ============================================================================
+        // 8. RAYCASTING INTERACTION & GROUND-PARALLEL VIEWPOINT MOVEMENT
+        // ============================================================================
+        const raycaster = new THREE.Raycaster();
+        const pointerDownPos = new THREE.Vector2();
+        const mouseNDC = new THREE.Vector2();
+        const deskPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+        // Smart Drag Mode: Left-dragging on the Left Page slides parallel to the ground;
+        // Left-dragging on the 3D Atom rotates the model (Right-drag always pans parallel to the ground)
+        renderer.domElement.addEventListener('pointerdown', (e) => {
+            pointerDownPos.set(e.clientX, e.clientY);
+
+            if (e.button === 0) {
+                mouseNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouseNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouseNDC, camera);
+
+                const atomHits = raycaster.intersectObjects(interactivePickables, false);
+                const visibleLeftSurfaces = STATE.dualMode ? [unit1.leftPageSurface, unit2.leftPageSurface] : [unit1.leftPageSurface];
+                const leftHits = raycaster.intersectObjects(visibleLeftSurfaces, false);
+
+                if (atomHits.length > 0) {
+                    controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+                    controls.touches.ONE = THREE.TOUCH.ROTATE;
+                } else if (leftHits.length > 0 || STATE.currentCamPreset === 'textbook') {
+                    controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
+                    controls.touches.ONE = THREE.TOUCH.PAN;
+                } else {
+                    controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+                    controls.touches.ONE = THREE.TOUCH.ROTATE;
+                }
+            }
+        }, true);
+
+        // Smooth Zoom-to-Cursor: shifts strictly parallel to the ground (XZ plane)
+        renderer.domElement.addEventListener('wheel', (e) => {
+            mouseNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouseNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouseNDC, camera);
+
+            const hitPoint = new THREE.Vector3();
+            if (raycaster.ray.intersectPlane(deskPlane, hitPoint)) {
+                const maxX = STATE.dualMode ? 32 : 16;
+                hitPoint.x = THREE.MathUtils.clamp(hitPoint.x, -maxX, maxX);
+                hitPoint.z = THREE.MathUtils.clamp(hitPoint.z, -10.5, 10.5);
+                if (e.deltaY < 0) {
+                    const shift = new THREE.Vector3().subVectors(hitPoint, controls.target).multiplyScalar(0.14);
+                    shift.y = 0; // Strictly parallel to the ground
+                    controls.target.add(shift);
+                    camera.position.add(shift);
+                }
+            }
+        }, { passive: true });
+
+        // Keyboard (Arrow keys / WASD) for smooth ground-parallel (XZ plane) movement
+        const pressedKeys = new Set();
+        window.addEventListener('keydown', (e) => pressedKeys.add(e.key.toLowerCase()));
+        window.addEventListener('keyup', (e) => pressedKeys.delete(e.key.toLowerCase()));
+
+        function updateKeyboardPan(dt) {
+            if (pressedKeys.size === 0) return;
+            const panStep = 12.0 * dt;
+            const forward = new THREE.Vector3();
+            camera.getWorldDirection(forward);
+            forward.y = 0; // Project onto horizontal ground plane
+            if (forward.lengthSq() < 0.0001) forward.set(0, 0, -1);
+            forward.normalize();
+            const right = new THREE.Vector3().crossVectors(forward, camera.up).normalize();
+
+            const move = new THREE.Vector3();
+            if (pressedKeys.has('arrowleft') || pressedKeys.has('a')) move.addScaledVector(right, -panStep);
+            if (pressedKeys.has('arrowright') || pressedKeys.has('d')) move.addScaledVector(right, panStep);
+            if (pressedKeys.has('arrowup') || pressedKeys.has('w')) move.addScaledVector(forward, panStep);
+            if (pressedKeys.has('arrowdown') || pressedKeys.has('s')) move.addScaledVector(forward, -panStep);
+
+            if (move.lengthSq() > 0) {
+                camTransition.active = false;
+                camera.position.add(move);
+                controls.target.add(move);
+            }
+        }
+
+        renderer.domElement.addEventListener('pointerup', (e) => {
+            const dragDist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+            if (dragDist > 6) return;
+
+            mouseNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouseNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouseNDC, camera);
+
+            // 1. Check 3D Atom Pickables (Protons, Neutrons, Electrons)
+            const atomHits = raycaster.intersectObjects(interactivePickables, false);
+            if (atomHits.length > 0) {
+                const uData = atomHits[0].object.userData;
+                if (uData) {
+                    if (uData.caption) {
+                        setCaptionText(uData.caption);
+                    } else if (uData.title) {
+                        setCaptionText(`${uData.title} ： ${uData.desc}`);
+                    }
+                    return;
+                }
+            }
+
+            // 2. Check Left Textbook Page Click: glide viewpoint strictly parallel to the ground
+            const visibleLeftSurfaces = STATE.dualMode ? [unit1.leftPageSurface, unit2.leftPageSurface] : [unit1.leftPageSurface];
+            const pageHits = raycaster.intersectObjects(visibleLeftSurfaces, false);
+            if (pageHits.length > 0 && pageHits[0].uv) {
+                const clickedUnit = pageHits[0].object === unit2.leftPageSurface ? unit2 : unit1;
+                const uv = pageHits[0].uv;
+                const canvasY = (1 - uv.y) * clickedUnit.leftPageCanvas.height;
+                const hitPt = pageHits[0].point;
+
+                let clickedChapter = 1;
+                if (canvasY >= 795 && canvasY <= 1285) {
+                    clickedChapter = 2;
+                } else if (canvasY >= 1315 && canvasY <= 1925) {
+                    clickedChapter = 3;
+                } else if (canvasY >= 1955 && canvasY <= 2530) {
+                    clickedChapter = 4;
+                }
+
+                STATE.highlightedChapter = clickedChapter;
+                renderLeftPageTexture(STATE.highlightedChapter, STATE.isIonized, clickedUnit);
+
+                // Smoothly slide camera & target parallel to the ground (constant Y height)
+                const deltaXZ = new THREE.Vector3(
+                    hitPt.x - controls.target.x,
+                    0,
+                    THREE.MathUtils.clamp(hitPt.z, -7.5, 7.5) - controls.target.z
+                );
+                camTransition.active = true;
+                camTransition.startTime = performance.now();
+                camTransition.duration = 650;
+                camTransition.startPos.copy(camera.position);
+                camTransition.startTarget.copy(controls.target);
+                camTransition.endTarget.copy(controls.target).add(deltaXZ);
+                camTransition.endPos.copy(camera.position).add(deltaXZ);
+            }
+        });
+
+        // ============================================================================
+        // 9. DOM UI EVENT LISTENERS
+        // ============================================================================
+        document.querySelectorAll('.elem-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                switchElement(btn.dataset.element);
+            });
+        });
+
+        document.querySelectorAll('.cam-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                moveToCameraPreset(btn.dataset.cam);
+            });
+        });
+
+        document.getElementById('btn-ionize-action').addEventListener('click', () => {
+            toggleIonizationState();
+        });
+
+        document.getElementById('btn-dual-mode').addEventListener('click', () => {
+            toggleDualMode();
+        });
+
+        document.querySelectorAll('.dual-elem-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                setDualElement(btn.dataset.dualSide, btn.dataset.dualElem);
+            });
+        });
+
+        document.getElementById('btn-hcl-separate').addEventListener('click', () => setHclStage('separate'));
+        document.getElementById('btn-hcl-bond').addEventListener('click', () => setHclStage('bonded'));
+        document.getElementById('btn-hcl-ionize').addEventListener('click', () => setHclStage('ionized'));
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // ============================================================================
+        // 10. ANIMATION LOOP (SMOOTH 3D SPHERICAL ELECTRON MOTION & CAMERA EASING)
+        // ============================================================================
+        let lastTime = performance.now();
+
+        function easeInOutCubic(t) {
+            return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const now = performance.now();
+            const dt = Math.min((now - lastTime) / 1000, 0.05);
+            lastTime = now;
+
+            updateKeyboardPan(dt);
+
+            // 1. Smooth Camera Preset Interpolation
+            if (camTransition.active) {
+                const elapsed = now - camTransition.startTime;
+                const progress = Math.min(elapsed / camTransition.duration, 1.0);
+                const eased = easeInOutCubic(progress);
+
+                camera.position.lerpVectors(camTransition.startPos, camTransition.endPos, eased);
+                controls.target.lerpVectors(camTransition.startTarget, camTransition.endTarget, eased);
+
+                if (progress >= 1.0) {
+                    camTransition.active = false;
+                }
+            }
+
+            controls.update();
+
+            // 2. Smooth Ionization & Dual HCl Reaction Progress Animation
+            const targetIon = STATE.isIonized ? 1.0 : 0.0;
+            if (Math.abs(STATE.ionizationProgress - targetIon) > 0.001) {
+                STATE.ionizationProgress += (targetIon - STATE.ionizationProgress) * Math.min(dt * 3.2, 1.0);
+                updateShellMaterialsAndVisibility();
+            } else {
+                STATE.ionizationProgress = targetIon;
+            }
+
+            const hclActive = isHclPair();
+            const targetBond = (STATE.dualMode && hclActive && STATE.hclStage === 'bonded') ? 1.0 : 0.0;
+            const targetHclIon = (STATE.dualMode && hclActive && STATE.hclStage === 'ionized') ? 1.0 : 0.0;
+            let reactionChanged = false;
+            if (Math.abs(STATE.hclBondProgress - targetBond) > 0.001) {
+                STATE.hclBondProgress += (targetBond - STATE.hclBondProgress) * Math.min(dt * 3.5, 1.0);
+                reactionChanged = true;
+            } else {
+                STATE.hclBondProgress = targetBond;
+            }
+            if (Math.abs(STATE.hclIonizeProgress - targetHclIon) > 0.001) {
+                STATE.hclIonizeProgress += (targetHclIon - STATE.hclIonizeProgress) * Math.min(dt * 3.5, 1.0);
+                reactionChanged = true;
+            } else {
+                STATE.hclIonizeProgress = targetHclIon;
+            }
+            if (reactionChanged) {
+                updateShellMaterialsAndVisibility();
+            }
+
+            // Smoothly position books & atoms
+            const activeUnits = STATE.dualMode ? UNITS : [unit1];
+            activeUnits.forEach(unit => {
+                unit.bookGroup.position.x += (unit.targetBookX - unit.bookGroup.position.x) * Math.min(dt * 5.0, 1.0);
+                unit.atomGroup.position.lerp(unit.targetAtomPos, Math.min(dt * 4.5, 1.0));
+            });
+
+            // Shared covalent bond glowing ring
+            const timeSec = now * 0.001;
+            if (STATE.dualMode && hclActive && STATE.hclBondProgress > 0.05) {
+                sharedBondGroup.visible = true;
+                sharedBondMat.opacity = 0.85 * Math.min(1, STATE.hclBondProgress);
+                sharedBondRing.rotation.z += dt * 1.6;
+                const pulse = 1.0 + Math.sin(timeSec * 4.0) * 0.06;
+                sharedBondRing.scale.set(pulse, pulse, pulse);
+            } else {
+                sharedBondGroup.visible = false;
+            }
+
+            // 3. Dynamic 3D Atom Motion across active units
+            const pairType = getDualReactionPair();
+            const donorUnit = (STATE.dualMode && hclActive) ? ((unit1.elementKey === 'h' || unit1.elementKey === 'na') ? unit1 : unit2) : null;
+            const clUnit = (STATE.dualMode && hclActive) ? (donorUnit === unit1 ? unit2 : unit1) : null;
+
+            activeUnits.forEach(unit => {
+                const def = ELEMENT_DEFS[unit.elementKey];
+
+                // Subtle vibration of nucleons in the nucleus
+                unit.nucleons.forEach(nMesh => {
+                    const b = nMesh.userData.basePos;
+                    const p = nMesh.userData.phase;
+                    nMesh.position.set(
+                        b.x + Math.sin(timeSec * 5.0 + p) * 0.022,
+                        b.y + Math.cos(timeSec * 4.5 + p) * 0.022,
+                        b.z + Math.sin(timeSec * 5.5 + p * 1.3) * 0.022
+                    );
+                });
+
+                let clSharedPicked = false;
+
+                // Smooth 3D spherical motion for every electron
+                unit.allElectrons.forEach(eData => {
+                    eData.phase += eData.angularSpeed * dt;
+                    eData.precessionAngle += eData.precessionSpeed * dt;
+
+                    // In HCl / NaCl dual mode, hide Cl's single-mode external gained electron
+                    if (STATE.dualMode && hclActive && eData.isGainedElectron) {
+                        eData.mesh.visible = false;
+                        return;
+                    }
+                    eData.mesh.visible = true;
+
+                    const cosP = Math.cos(eData.phase);
+                    const sinP = Math.sin(eData.phase);
+                    const wobble = Math.sin(eData.precessionAngle * 2.3) * 0.24;
+
+                    const posOnSphere = new THREE.Vector3()
+                        .addScaledVector(eData.uVec, cosP)
+                        .addScaledVector(eData.vVec, sinP)
+                        .addScaledVector(eData.orbitNormal, wobble)
+                        .normalize()
+                        .multiplyScalar(eData.baseRadius);
+
+                    if (STATE.dualMode && hclActive) {
+                        if (pairType === 'nacl') {
+                            // NaCl Ionic Bond & Ionization: Na's M-shell electron (shellIdx 2) transfers into Cl's M-shell (radius 5.25)
+                            const isNaDonorElectron = (unit === donorUnit && eData.shellIdx === 2);
+                            const transferProg = Math.max(STATE.hclBondProgress, STATE.hclIonizeProgress);
+                            if (isNaDonorElectron && transferProg > 0.001) {
+                                const clOrbitOffset = new THREE.Vector3()
+                                    .addScaledVector(eData.uVec, cosP)
+                                    .addScaledVector(eData.vVec, sinP)
+                                    .addScaledVector(eData.orbitNormal, wobble)
+                                    .normalize()
+                                    .multiplyScalar(5.25);
+                                const targetLocal = clUnit.atomGroup.position.clone()
+                                    .add(clOrbitOffset)
+                                    .sub(unit.atomGroup.position);
+                                posOnSphere.lerp(targetLocal, easeInOutCubic(transferProg));
+                            }
+                        } else {
+                            // HCl Covalent Bond (H's electron + 1 Cl M-shell electron orbit in shared pair)
+                            const isHShared = (unit === donorUnit && eData.shellIdx === 0);
+                            let isClShared = false;
+                            if (unit === clUnit && eData.shellIdx === 2 && !eData.isGainedElectron && !clSharedPicked) {
+                                isClShared = true;
+                                clSharedPicked = true;
+                            }
+
+                            if ((isHShared || isClShared) && STATE.hclBondProgress > 0.001) {
+                                const angle = timeSec * 4.2 + (isHShared ? 0 : Math.PI);
+                                const bondWorld = new THREE.Vector3(
+                                    sharedBondGroup.position.x + Math.cos(angle) * 0.45,
+                                    sharedBondGroup.position.y + Math.sin(angle) * 1.05,
+                                    Math.sin(angle * 2.0) * 0.65
+                                );
+                                const bondLocal = bondWorld.sub(unit.atomGroup.position);
+                                posOnSphere.lerp(bondLocal, easeInOutCubic(STATE.hclBondProgress));
+                            }
+
+                            // HCl Ionization: H's electron transfers into Cl's M-shell (radius 5.25)
+                            if (isHShared && STATE.hclIonizeProgress > 0.001) {
+                                const clOrbitOffset = new THREE.Vector3()
+                                    .addScaledVector(eData.uVec, cosP)
+                                    .addScaledVector(eData.vVec, sinP)
+                                    .addScaledVector(eData.orbitNormal, wobble)
+                                    .normalize()
+                                    .multiplyScalar(5.25);
+                                const targetLocal = clUnit.atomGroup.position.clone()
+                                    .add(clOrbitOffset)
+                                    .sub(unit.atomGroup.position);
+                                posOnSphere.lerp(targetLocal, easeInOutCubic(STATE.hclIonizeProgress));
+                            }
+                        }
+                    } else if (!STATE.dualMode) {
+                        if (eData.isGainedElectron) {
+                            const remainingDist = (1.0 - easeInOutCubic(STATE.ionizationProgress)) * def.ejectDistance;
+                            posOnSphere.addScaledVector(eData.ejectDir, remainingDist);
+                            if (eData.eMat) {
+                                eData.eMat.opacity = 0.4 + STATE.ionizationProgress * 0.6;
+                            }
+                            eData.haloMat.opacity = 0.18 + STATE.ionizationProgress * 0.18;
+                        } else if (def.ionMode !== 'gain' && eData.shellIdx === def.valenceShellIdx && STATE.ionizationProgress > 0.001) {
+                            const ejectDist = easeInOutCubic(STATE.ionizationProgress) * def.ejectDistance;
+                            posOnSphere.addScaledVector(eData.ejectDir, ejectDist);
+                        }
+                    }
+
+                    eData.mesh.position.copy(posOnSphere);
+                });
+            });
+
+            // 4. Project Minimal K/L/M/N Shell Badges
+            update3DLabels();
+
+            renderer.render(scene, camera);
+        }
+
+        window.onload = function () {
+            animate();
+        };
+    </script>
+</body>
+</html>
