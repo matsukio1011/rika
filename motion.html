@@ -1338,6 +1338,14 @@
           <div class="force-canvas-wrap">
             <canvas id="forcePopupCanvas"></canvas>
           </div>
+          <div class="energy-resizer r-n" data-dir="n"></div>
+          <div class="energy-resizer r-s" data-dir="s"></div>
+          <div class="energy-resizer r-e" data-dir="e"></div>
+          <div class="energy-resizer r-w" data-dir="w"></div>
+          <div class="energy-resizer r-ne" data-dir="ne"></div>
+          <div class="energy-resizer r-nw" data-dir="nw"></div>
+          <div class="energy-resizer r-sw" data-dir="sw"></div>
+          <div class="energy-resizer r-se" data-dir="se" title="ドラッグして拡大・縮小">◢</div>
         </div>
       </div>
     </section>
@@ -1809,12 +1817,16 @@
       const stageW = stage.clientWidth;
       const stageH = stage.clientHeight;
       if (stageW <= 0 || stageH <= 0) return;
-      const maxL = Math.max(4, stageW - card.offsetWidth - 4);
-      const maxT = Math.max(4, stageH - card.offsetHeight - 4);
-      const curL = parseFloat(card.style.left) || 0;
-      const curT = parseFloat(card.style.top) || 0;
-      card.style.left = `${Math.max(4, Math.min(maxL, curL))}px`;
-      card.style.top = `${Math.max(4, Math.min(maxT, curT))}px`;
+      const minW = 360;
+      const minH = 280;
+      const w = Math.max(minW, Math.min(stageW - 12, card.offsetWidth));
+      const h = Math.max(minH, Math.min(stageH - 12, card.offsetHeight));
+      const l = Math.max(4, Math.min(stageW - w - 4, parseFloat(card.style.left) || 0));
+      const t = Math.max(4, Math.min(stageH - h - 4, parseFloat(card.style.top) || 0));
+      card.style.width = `${w}px`;
+      card.style.height = `${h}px`;
+      card.style.left = `${l}px`;
+      card.style.top = `${t}px`;
     }
 
     (function initForcePopupDrag() {
@@ -1823,36 +1835,93 @@
       const stage = document.getElementById('simStage');
       if (!card || !header || !stage) return;
 
-      let dragging = false;
-      let startX = 0, startY = 0, origL = 0, origT = 0;
+      let mode = null; // 'drag' | 'resize'
+      let resizeDir = '';
+      let startX = 0, startY = 0, origL = 0, origT = 0, origW = 0, origH = 0;
 
-      header.addEventListener('mousedown', (e) => {
-        if (e.button !== 0 || e.target.closest('button')) return;
+      function beginTransform(e) {
         const stageRect = stage.getBoundingClientRect();
         const cardRect = card.getBoundingClientRect();
         origL = cardRect.left - stageRect.left;
         origT = cardRect.top - stageRect.top;
+        origW = cardRect.width;
+        origH = cardRect.height;
         card.style.left = `${origL}px`;
         card.style.top = `${origT}px`;
+        card.style.width = `${origW}px`;
+        card.style.height = `${origH}px`;
         card.style.right = 'auto';
         startX = e.clientX;
         startY = e.clientY;
-        dragging = true;
+      }
+
+      header.addEventListener('mousedown', (e) => {
+        if (e.button !== 0 || e.target.closest('button')) return;
+        beginTransform(e);
+        mode = 'drag';
         e.preventDefault();
       });
 
+      card.querySelectorAll('.energy-resizer').forEach((handle) => {
+        handle.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
+          beginTransform(e);
+          mode = 'resize';
+          resizeDir = handle.dataset.dir || 'se';
+          e.preventDefault();
+          e.stopPropagation();
+        });
+      });
+
       window.addEventListener('mousemove', (e) => {
-        if (!dragging) return;
+        if (!mode) return;
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
-        const maxL = Math.max(4, stage.clientWidth - card.offsetWidth - 4);
-        const maxT = Math.max(4, stage.clientHeight - card.offsetHeight - 4);
-        card.style.left = `${Math.max(4, Math.min(maxL, origL + dx))}px`;
-        card.style.top = `${Math.max(4, Math.min(maxT, origT + dy))}px`;
+        const stageW = stage.clientWidth;
+        const stageH = stage.clientHeight;
+
+        if (mode === 'drag') {
+          const maxL = Math.max(4, stageW - card.offsetWidth - 4);
+          const maxT = Math.max(4, stageH - card.offsetHeight - 4);
+          card.style.left = `${Math.max(4, Math.min(maxL, origL + dx))}px`;
+          card.style.top = `${Math.max(4, Math.min(maxT, origT + dy))}px`;
+          return;
+        }
+
+        const minW = 360;
+        const minH = 280;
+        let newL = origL;
+        let newT = origT;
+        let newW = origW;
+        let newH = origH;
+
+        if (resizeDir.includes('e')) {
+          newW = Math.max(minW, Math.min(stageW - origL - 4, origW + dx));
+        }
+        if (resizeDir.includes('s')) {
+          newH = Math.max(minH, Math.min(stageH - origT - 4, origH + dy));
+        }
+        if (resizeDir.includes('w')) {
+          const maxLeft = origL + origW - minW;
+          newL = Math.max(4, Math.min(maxLeft, origL + dx));
+          newW = origW + (origL - newL);
+        }
+        if (resizeDir.includes('n')) {
+          const maxTop = origT + origH - minH;
+          newT = Math.max(4, Math.min(maxTop, origT + dy));
+          newH = origH + (origT - newT);
+        }
+
+        card.style.left = `${newL}px`;
+        card.style.top = `${newT}px`;
+        card.style.width = `${newW}px`;
+        card.style.height = `${newH}px`;
+        if (state.popupGhost) renderForcePopup();
       });
 
       window.addEventListener('mouseup', () => {
-        dragging = false;
+        mode = null;
+        resizeDir = '';
       });
     })();
 
