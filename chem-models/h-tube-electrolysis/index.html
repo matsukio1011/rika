@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>H字管 水の電気分解シミュレーター｜中学理科</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Top Header -->
+    <header class="top-bar">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+            <path d="M9 5v22M23 5v22M9 16h14" />
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>H字管 水の電気分解シミュレーター</h1>
+        </div>
+      </div>
+
+      <!-- Mode Switcher Tabs -->
+      <nav class="mode-tabs" role="tablist" aria-label="アプリの切り替え">
+        <button type="button" class="mode-tab active" data-mode="sim" role="tab" aria-selected="true">
+          ⚡ 実験・体積比
+        </button>
+        <button type="button" class="mode-tab" data-mode="setup" role="tab" aria-selected="false">
+          🔧 装置の組み立て・使い方
+        </button>
+      </nav>
+
+      <div class="top-controls">
+        <button id="quiz-btn" class="icon-btn" type="button" title="電極や気体名を隠して授業で質問できます">
+          <span>？ クイズモード</span>
+        </button>
+
+        <button id="theme-toggle" class="icon-btn" type="button" aria-label="ダークモード切り替え" title="ライト / ダークモード切り替え">
+          <svg class="icon-sun" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <span id="theme-label">ダーク</span>
+        </button>
+
+        <button id="fullscreen-toggle" class="icon-btn" type="button" aria-label="全画面表示切り替え" title="全画面表示 / 解除">
+          <svg class="icon-expand" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <polyline points="9 21 3 21 3 15"></polyline>
+            <line x1="21" y1="3" x2="14" y2="10"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+          <svg class="icon-compress" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 14 10 14 10 20"></polyline>
+            <polyline points="20 10 14 10 14 4"></polyline>
+            <line x1="14" y1="10" x2="21" y2="3"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+          <span id="fullscreen-label">全画面</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content 1: Electrolysis Simulator (No Scroll) -->
+    <main id="view-sim" class="workspace">
+      <!-- Left: Interactive H-Tube Apparatus -->
+      <section class="apparatus-panel" aria-label="H字管電気分解装置">
+        <div class="apparatus-toolbar">
+          <div class="power-controls">
+            <button id="power-btn" class="power-btn" type="button">
+              <span class="power-dot"></span>
+              <span id="power-btn-text">電源 ON</span>
+            </button>
+            <button id="swap-polarity-btn" class="icon-btn" type="button" title="電源の＋と−を入れ替える">
+              ⇄ ＋/− 逆接続
+            </button>
+            <button id="reset-btn" class="icon-btn" type="button">
+              ↺ リセット
+            </button>
+          </div>
+
+          <label class="toggle-chip">
+            <input type="checkbox" id="model-toggle" checked />
+            <span>分子モデル表示</span>
+          </label>
+        </div>
+
+        <!-- SVG Stage -->
+        <div class="svg-stage">
+          <svg id="htube-svg" viewBox="0 0 760 470" preserveAspectRatio="xMidYMid meet" role="img" aria-label="H字管電気分解装置の模式図">
+            <defs>
+              <linearGradient id="glassGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="rgba(255,255,255,0.45)" />
+                <stop offset="25%" stop-color="rgba(255,255,255,0.08)" />
+                <stop offset="80%" stop-color="rgba(255,255,255,0.05)" />
+                <stop offset="100%" stop-color="rgba(255,255,255,0.35)" />
+              </linearGradient>
+              <linearGradient id="waterGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#60a5fa" stop-opacity="0.48" />
+                <stop offset="100%" stop-color="#2563eb" stop-opacity="0.65" />
+              </linearGradient>
+              <clipPath id="leftTubeClip">
+                <rect x="175" y="70" width="76" height="295" rx="6" />
+              </clipPath>
+              <clipPath id="rightTubeClip">
+                <rect x="509" y="70" width="76" height="295" rx="6" />
+              </clipPath>
+              <clipPath id="bridgeClip">
+                <rect x="251" y="210" width="258" height="36" />
+              </clipPath>
+            </defs>
+
+            <!-- Gas Volume Ratio Callout -->
+            <g id="ratio-banner" transform="translate(380, 34)">
+              <rect x="-135" y="-20" width="270" height="36" rx="18" class="ratio-pill" />
+              <text id="ratio-text" x="0" y="3" text-anchor="middle" class="ratio-text">
+                体積比　水素 2 ： 酸素 1
+              </text>
+            </g>
+
+            <!-- Left Tube Water & Gas -->
+            <g clip-path="url(#leftTubeClip)">
+              <!-- Collected Gas Background -->
+              <rect id="left-gas-bg" x="175" y="70" width="76" height="0" class="gas-h2" />
+              <!-- Water Column -->
+              <rect id="left-water" x="175" y="70" width="76" height="295" fill="url(#waterGrad)" />
+              <!-- Water Meniscus Line -->
+              <line id="left-meniscus" x1="175" y1="70" x2="251" y2="70" class="meniscus-line" />
+              <!-- Bubbles Container -->
+              <g id="left-bubbles"></g>
+              <!-- Molecule Models inside Left Tube -->
+              <g id="left-molecules"></g>
+            </g>
+
+            <!-- Right Tube Water & Gas -->
+            <g clip-path="url(#rightTubeClip)">
+              <rect id="right-gas-bg" x="509" y="70" width="76" height="0" class="gas-o2" />
+              <rect id="right-water" x="509" y="70" width="76" height="295" fill="url(#waterGrad)" />
+              <line id="right-meniscus" x1="509" y1="70" x2="585" y2="70" class="meniscus-line" />
+              <g id="right-bubbles"></g>
+              <g id="right-molecules"></g>
+            </g>
+
+            <!-- Center Bridge Water -->
+            <g clip-path="url(#bridgeClip)">
+              <rect x="251" y="210" width="258" height="36" fill="url(#waterGrad)" />
+              <text x="380" y="232" text-anchor="middle" class="bridge-label">うすい水酸化ナトリウム水溶液</text>
+            </g>
+
+            <!-- H-Tube Glass Outline -->
+            <path d="M175 64 h76 v146 h258 v-146 h76 v301 a8 8 0 0 1 -8 8 h-60 a8 8 0 0 1 -8 -8 v-119 h-258 v119 a8 8 0 0 1 -8 8 h-60 a8 8 0 0 1 -8 -8 Z"
+                  fill="url(#glassGrad)" class="glass-outline" />
+
+            <!-- Volume Scale Ticks (0 to 10) -->
+            <g id="scale-ticks" class="scale-ticks"></g>
+
+            <!-- Top Rubber Stoppers / Valves -->
+            <rect x="171" y="52" width="84" height="18" rx="4" class="stopper" />
+            <rect x="505" y="52" width="84" height="18" rx="4" class="stopper" />
+
+            <!-- Electrodes at Bottom -->
+            <rect x="206" y="318" width="14" height="47" rx="3" class="electrode" />
+            <rect x="540" y="318" width="14" height="47" rx="3" class="electrode" />
+
+            <!-- Wires to DC Power Supply -->
+            <path id="wire-left" d="M213 365 v45 h95" fill="none" stroke-width="4" stroke-linecap="round" class="wire-neg" />
+            <path id="wire-right" d="M547 365 v45 h-95" fill="none" stroke-width="4" stroke-linecap="round" class="wire-pos" />
+
+            <!-- DC Power Supply Box -->
+            <g transform="translate(308, 382)">
+              <rect x="0" y="0" width="144" height="58" rx="10" class="psu-box" />
+              <text x="72" y="22" text-anchor="middle" class="psu-title">直流電源装置</text>
+              <circle id="psu-led" cx="24" cy="40" r="5" class="psu-led" />
+              <text id="psu-status-text" x="42" y="44" class="psu-status">OFF (0V)</text>
+              <text id="term-left-sign" x="14" y="18" class="term-sign neg">−</text>
+              <text id="term-right-sign" x="130" y="18" class="term-sign pos" text-anchor="end">＋</text>
+            </g>
+
+            <!-- Side Labels (Left & Right) -->
+            <g id="left-side-label" transform="translate(88, 175)">
+              <rect x="-74" y="-44" width="148" height="88" rx="12" class="side-card" />
+              <text id="left-pole-label" x="0" y="-20" text-anchor="middle" class="pole-badge neg">陰極（−）</text>
+              <text id="left-gas-name" x="0" y="8" text-anchor="middle" class="gas-name">水素 (H₂)</text>
+              <text id="left-vol-text" x="0" y="30" text-anchor="middle" class="vol-readout">発生量: 0.0 mL</text>
+            </g>
+
+            <g id="right-side-label" transform="translate(672, 175)">
+              <rect x="-74" y="-44" width="148" height="88" rx="12" class="side-card" />
+              <text id="right-pole-label" x="0" y="-20" text-anchor="middle" class="pole-badge pos">陽極（＋）</text>
+              <text id="right-gas-name" x="0" y="8" text-anchor="middle" class="gas-name">酸素 (O₂)</text>
+              <text id="right-vol-text" x="0" y="30" text-anchor="middle" class="vol-readout">発生量: 0.0 mL</text>
+            </g>
+
+            <!-- Gas Test Visual Effect Overlay -->
+            <g id="test-effect-layer"></g>
+          </svg>
+        </div>
+
+        <!-- Bottom Gas Verification & Progress Bar -->
+        <div class="apparatus-footer">
+          <div class="progress-wrap">
+            <label for="progress-slider" class="progress-label">反応の進み具合</label>
+            <input id="progress-slider" type="range" min="0" max="100" value="0" />
+            <span id="progress-pct" class="progress-pct">0%</span>
+          </div>
+
+          <div class="gas-test-btns">
+            <button id="test-left-btn" class="test-btn" type="button" disabled>
+              🔥 左の気体を確かめる
+            </button>
+            <button id="test-right-btn" class="test-btn" type="button" disabled>
+              ✨ 右の気体を確かめる
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Explanation & Experiment Result Panel -->
+      <aside class="info-panel" aria-label="解説と実験結果">
+        <!-- Test Result Banner -->
+        <div id="test-result-card" class="result-card">
+          <div class="result-badge">気体の確認テスト</div>
+          <p id="test-result-text">電源をONにして気体を集めたあと、下の「気体を確かめる」ボタンを押してください。</p>
+        </div>
+
+        <!-- Explanation Tabs -->
+        <div class="tab-bar" role="tablist">
+          <button type="button" class="tab-btn active" data-tab="overview">① しくみ・体積比</button>
+          <button type="button" class="tab-btn" data-tab="naoh">② なぜNaOH？</button>
+          <button type="button" class="tab-btn" data-tab="tests">③ 気体の性質</button>
+        </div>
+
+        <div class="tab-content" id="tab-overview">
+          <h3>水の電気分解（2H₂O → 2H₂ + O₂）</h3>
+          <div class="model-equation-card" aria-label="水の電気分解の化学反応式とモデル図">
+            <div class="me-col">
+              <div class="me-word">水</div>
+              <div class="me-formula"><span class="me-coeff">2</span>H<sub>2</sub>O</div>
+              <svg class="me-svg" viewBox="0 0 80 108" width="74" height="100">
+                <defs>
+                  <radialGradient id="me-grad-O" cx="35%" cy="32%" r="68%">
+                    <stop offset="0%" stop-color="#ff6b6b" />
+                    <stop offset="100%" stop-color="#d63031" />
+                  </radialGradient>
+                  <radialGradient id="me-grad-H" cx="35%" cy="32%" r="68%">
+                    <stop offset="0%" stop-color="#ffffff" />
+                    <stop offset="100%" stop-color="#cbd5e1" />
+                  </radialGradient>
+                </defs>
+                <!-- Top H2O -->
+                <g transform="translate(40, 24)">
+                  <circle cx="0" cy="-6" r="15" fill="url(#me-grad-O)" stroke="rgba(15,23,42,0.35)" stroke-width="1.4" />
+                  <text x="0" y="-6" fill="#fff" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central">O</text>
+                  <circle cx="-18" cy="10" r="11.5" fill="url(#me-grad-H)" stroke="#333" stroke-width="1.6" />
+                  <text x="-18" y="10" fill="#0f172a" font-size="10.5" font-weight="800" text-anchor="middle" dominant-baseline="central">H</text>
+                  <circle cx="18" cy="10" r="11.5" fill="url(#me-grad-H)" stroke="#333" stroke-width="1.6" />
+                  <text x="18" y="10" fill="#0f172a" font-size="10.5" font-weight="800" text-anchor="middle" dominant-baseline="central">H</text>
+                </g>
+                <!-- Bottom H2O -->
+                <g transform="translate(40, 78)">
+                  <circle cx="0" cy="-6" r="15" fill="url(#me-grad-O)" stroke="rgba(15,23,42,0.35)" stroke-width="1.4" />
+                  <text x="0" y="-6" fill="#fff" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central">O</text>
+                  <circle cx="-18" cy="10" r="11.5" fill="url(#me-grad-H)" stroke="#333" stroke-width="1.6" />
+                  <text x="-18" y="10" fill="#0f172a" font-size="10.5" font-weight="800" text-anchor="middle" dominant-baseline="central">H</text>
+                  <circle cx="18" cy="10" r="11.5" fill="url(#me-grad-H)" stroke="#333" stroke-width="1.6" />
+                  <text x="18" y="10" fill="#0f172a" font-size="10.5" font-weight="800" text-anchor="middle" dominant-baseline="central">H</text>
+                </g>
+              </svg>
+            </div>
+
+            <div class="me-op">
+              <div class="me-op-arrow">→</div>
+              <div class="me-op-sym">→</div>
+              <div class="me-op-arrow me-op-model">→</div>
+            </div>
+
+            <div class="me-col">
+              <div class="me-word">水素</div>
+              <div class="me-formula"><span class="me-coeff">2</span>H<sub>2</sub></div>
+              <svg class="me-svg" viewBox="0 0 64 108" width="60" height="100">
+                <!-- Top H2 -->
+                <g transform="translate(32, 30)">
+                  <circle cx="-11" cy="0" r="11.5" fill="url(#me-grad-H)" stroke="#333" stroke-width="1.6" />
+                  <text x="-11" y="0" fill="#0f172a" font-size="10.5" font-weight="800" text-anchor="middle" dominant-baseline="central">H</text>
+                  <circle cx="11" cy="0" r="11.5" fill="url(#me-grad-H)" stroke="#333" stroke-width="1.6" />
+                  <text x="11" y="0" fill="#0f172a" font-size="10.5" font-weight="800" text-anchor="middle" dominant-baseline="central">H</text>
+                </g>
+                <!-- Bottom H2 -->
+                <g transform="translate(32, 76)">
+                  <circle cx="-11" cy="0" r="11.5" fill="url(#me-grad-H)" stroke="#333" stroke-width="1.6" />
+                  <text x="-11" y="0" fill="#0f172a" font-size="10.5" font-weight="800" text-anchor="middle" dominant-baseline="central">H</text>
+                  <circle cx="11" cy="0" r="11.5" fill="url(#me-grad-H)" stroke="#333" stroke-width="1.6" />
+                  <text x="11" y="0" fill="#0f172a" font-size="10.5" font-weight="800" text-anchor="middle" dominant-baseline="central">H</text>
+                </g>
+              </svg>
+            </div>
+
+            <div class="me-op">
+              <div class="me-op-sym">+</div>
+              <div class="me-op-sym">+</div>
+              <div class="me-op-sym me-op-model">+</div>
+            </div>
+
+            <div class="me-col">
+              <div class="me-word">酸素</div>
+              <div class="me-formula">O<sub>2</sub></div>
+              <svg class="me-svg" viewBox="0 0 72 108" width="66" height="100">
+                <!-- O2 -->
+                <g transform="translate(36, 54)">
+                  <circle cx="-14" cy="0" r="15" fill="url(#me-grad-O)" stroke="rgba(15,23,42,0.35)" stroke-width="1.4" />
+                  <text x="-14" y="0" fill="#fff" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central">O</text>
+                  <circle cx="14" cy="0" r="15" fill="url(#me-grad-O)" stroke="rgba(15,23,42,0.35)" stroke-width="1.4" />
+                  <text x="14" y="0" fill="#fff" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central">O</text>
+                </g>
+              </svg>
+            </div>
+          </div>
+          <ul class="point-list">
+            <li><strong>陰極（−）</strong>：水素（H₂）が発生</li>
+            <li><strong>陽極（＋）</strong>：酸素（O₂）が発生</li>
+            <li><strong>気体の体積比</strong>：常に <strong>水素 2 ： 酸素 1</strong></li>
+          </ul>
+          <p class="sub-note">※実際には酸素が少し水に溶けるため、最初は酸素が2:1よりやや少なく見えることがあります。</p>
+        </div>
+
+        <div class="tab-content hidden" id="tab-naoh">
+          <h3>なぜ水酸化ナトリウムを加えるの？</h3>
+          <p>純粋な水（蒸留水）は<strong>電気をほとんど通さない</strong>ため、そのままでは電気分解がほとんど進みません。</p>
+          <div class="highlight-box">
+            <strong>少量の水酸化ナトリウム（NaOH）</strong>を溶かすことで、電流が流れやすくなり、水の電気分解が活発に起こります。
+          </div>
+          <ul class="point-list">
+            <li>加えた水酸化ナトリウム自体は反応で消費されず、水だけが分解されます。</li>
+            <li>「電流を流しやすくするための助け役」と覚えるとバッチリです！</li>
+          </ul>
+        </div>
+
+        <div class="tab-content hidden" id="tab-tests">
+          <h3>発生した気体の確かめ方</h3>
+          <div class="gas-card h2-card">
+            <h4>陰極（−）：水素（H₂）</h4>
+            <p>火のついた<strong>マッチ</strong>を近づけると、<strong>「ポンッ」と音を立てて燃える</strong>（試験管の内側に水滴がつく）。</p>
+          </div>
+          <div class="gas-card o2-card">
+            <h4>陽極（＋）：酸素（O₂）</h4>
+            <p>火のついた<strong>線香</strong>を入れると、<strong>激しく炎を出して燃える</strong>（助燃性がある）。</p>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Main Content 2: Apparatus Setup & Usage Guide (No Scroll) -->
+    <main id="view-setup" class="workspace hidden">
+      <!-- Left: Interactive Full Apparatus Diagram -->
+      <section class="apparatus-panel" aria-label="H字管電気分解装置の使い方シミュレーター">
+        <div class="apparatus-toolbar">
+          <div class="power-controls">
+            <button id="setup-fill-btn" class="icon-btn" type="button">
+              💧 水溶液を注ぐ
+            </button>
+            <button id="setup-power-btn" class="power-btn" type="button">
+              <span class="power-dot"></span>
+              <span id="setup-power-text">電流を流す</span>
+            </button>
+            <button id="setup-test-btn" class="icon-btn" type="button">
+              🔥 気体を確認
+            </button>
+            <button id="setup-reset-btn" class="icon-btn" type="button">
+              ↺ 最初に戻す
+            </button>
+          </div>
+
+          <label class="toggle-chip">
+            <input type="checkbox" id="setup-labels-toggle" checked />
+            <span>部品名を表示</span>
+          </label>
+        </div>
+
+        <div class="svg-stage">
+          <svg id="setup-svg" viewBox="0 0 760 470" preserveAspectRatio="xMidYMid meet" role="img" aria-label="H字管電気分解装置の全体図">
+            <defs>
+              <linearGradient id="setupWaterGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#60a5fa" stop-opacity="0.52" />
+                <stop offset="100%" stop-color="#2563eb" stop-opacity="0.72" />
+              </linearGradient>
+              <clipPath id="setupLeftClip">
+                <rect x="200" y="102" width="50" height="232" rx="4" />
+              </clipPath>
+              <clipPath id="setupRightClip">
+                <rect x="304" y="102" width="50" height="232" rx="4" />
+              </clipPath>
+              <clipPath id="setupReservoirClip">
+                <path d="M430 112 h76 l-14 68 h-48 Z" />
+              </clipPath>
+            </defs>
+
+            <!-- Plastic Tray (プラスチックのバット) -->
+            <path d="M128 360 h294 l18 58 h-330 Z" class="tray-outer" />
+            <path d="M142 368 h266 l12 40 h-290 Z" class="tray-inner" />
+
+            <!-- Stand Base & Rod (支柱) -->
+            <rect x="268" y="34" width="10" height="356" rx="4" class="stand-metal" />
+            <path d="M210 390 h126 l14 14 h-154 Z" class="stand-metal" />
+
+            <!-- Rubber Tubing from Reservoir to Center of H-tube Bridge (x=277) -->
+            <path id="setup-rubber-tube" d="M468 180 V256 C468 280 446 286 424 286 H295 C282 286 277 280 277 268 V242" fill="none" stroke-width="11" stroke-linecap="round" class="rubber-tube" />
+            <path id="setup-tube-water" d="M468 180 V256 C468 280 446 286 424 286 H295 C282 286 277 280 277 268 V242" fill="none" stroke-width="6" stroke-linecap="round" class="rubber-tube-water hidden" />
+
+            <!-- Movable Reservoir Assembly (支持環・液だめ・液だめピンチコック) -->
+            <g id="setup-res-assembly" class="res-assembly">
+              <!-- Support Ring (支持環) -->
+              <rect x="278" y="138" width="154" height="7" rx="3" class="stand-metal" />
+              <ellipse cx="468" cy="142" rx="42" ry="9" fill="none" stroke-width="5" class="stand-ring" />
+
+              <!-- Reservoir (液だめ) -->
+              <g clip-path="url(#setupReservoirClip)">
+                <rect id="setup-res-water" x="425" y="180" width="86" height="0" fill="url(#setupWaterGrad)" />
+              </g>
+              <path d="M430 112 h76 l-14 68 h-48 Z" fill="rgba(255,255,255,0.12)" class="glass-outline" />
+
+              <!-- Reservoir Pinchcock -->
+              <g id="cock-res" class="pinchcock is-open" transform="translate(468, 212)" role="button" tabindex="0" aria-label="液だめのピンチコック">
+                <rect x="-24" y="-12" width="48" height="24" rx="7" class="cock-pill" />
+                <text x="0" y="4" text-anchor="middle" class="cock-text">開</text>
+              </g>
+
+              <!-- Reservoir Callout Labels -->
+              <g id="setup-res-labels" class="part-labels">
+                <line x1="504" y1="132" x2="565" y2="112" class="callout-line" />
+                <text x="570" y="116" text-anchor="start" class="callout-text">支持環</text>
+
+                <line x1="500" y1="156" x2="565" y2="156" class="callout-line" />
+                <text x="570" y="160" text-anchor="start" class="callout-text">液だめ</text>
+
+                <line x1="492" y1="212" x2="565" y2="212" class="callout-line" />
+                <text x="570" y="216" text-anchor="start" class="callout-text">液だめのピンチコック</text>
+              </g>
+            </g>
+
+            <!-- Water Level Comparison Guide Line -->
+            <line id="setup-level-guide" x1="190" y1="158" x2="500" y2="158" class="level-guide hidden" />
+
+            <!-- H-Tube Water & Gas -->
+            <g clip-path="url(#setupLeftClip)">
+              <rect id="setup-left-water" x="200" y="334" width="50" height="0" fill="url(#setupWaterGrad)" />
+              <g id="setup-left-bubbles"></g>
+            </g>
+            <g clip-path="url(#setupRightClip)">
+              <rect id="setup-right-water" x="304" y="334" width="50" height="0" fill="url(#setupWaterGrad)" />
+              <g id="setup-right-bubbles"></g>
+            </g>
+            <rect id="setup-bridge-water" x="250" y="210" width="54" height="24" fill="url(#setupWaterGrad)" class="hidden" />
+
+            <!-- H-Tube Glass Outline (with center bottom inlet port at x=277) -->
+            <path d="M200 100 h50 v110 h54 v-110 h50 v234 h-50 v-100 h-21 v12 h-12 v-12 h-21 v100 h-50 Z" fill="rgba(255,255,255,0.08)" class="glass-outline" />
+
+            <!-- Rubber Stoppers (Top & Bottom) -->
+            <rect x="197" y="90" width="56" height="16" rx="3" class="stopper" />
+            <rect x="301" y="90" width="56" height="16" rx="3" class="stopper" />
+            <rect x="197" y="330" width="56" height="16" rx="3" class="stopper" />
+            <rect x="301" y="330" width="56" height="16" rx="3" class="stopper" />
+
+            <!-- Top Exhaust Tubes -->
+            <path d="M225 90 v-30" fill="none" stroke-width="8" stroke-linecap="round" class="rubber-tube" />
+            <path d="M329 90 v-30" fill="none" stroke-width="8" stroke-linecap="round" class="rubber-tube" />
+
+            <!-- Electrodes -->
+            <rect x="219" y="286" width="12" height="44" rx="2" class="electrode" />
+            <rect x="323" y="286" width="12" height="44" rx="2" class="electrode" />
+
+            <!-- Wires & Power Supply (電源装置) -->
+            <path d="M225 346 v36 h250" fill="none" stroke-width="3.5" class="wire-neg" />
+            <path d="M329 346 v24 h146" fill="none" stroke-width="3.5" class="wire-pos" />
+            <g transform="translate(475, 344)">
+              <rect x="0" y="0" width="136" height="62" rx="10" class="psu-box" />
+              <text x="68" y="22" text-anchor="middle" class="psu-title">電源装置</text>
+              <circle id="setup-psu-led" cx="22" cy="42" r="5" class="psu-led" />
+              <text id="setup-psu-status" x="36" y="46" class="psu-status">OFF</text>
+              <text x="14" y="20" class="term-sign neg">−</text>
+              <text x="122" y="20" class="term-sign pos" text-anchor="end">＋</text>
+            </g>
+
+            <!-- 3 Interactive Pinchcocks (ピンチコック) -->
+            <g id="cock-left" class="pinchcock is-open" transform="translate(225, 70)" role="button" tabindex="0" aria-label="左のピンチコック">
+              <rect x="-24" y="-12" width="48" height="24" rx="7" class="cock-pill" />
+              <text x="0" y="4" text-anchor="middle" class="cock-text">開</text>
+            </g>
+            <g id="cock-right" class="pinchcock is-open" transform="translate(329, 70)" role="button" tabindex="0" aria-label="右のピンチコック">
+              <rect x="-24" y="-12" width="48" height="24" rx="7" class="cock-pill" />
+              <text x="0" y="4" text-anchor="middle" class="cock-text">開</text>
+            </g>
+
+            <!-- Part Name Callouts (toggleable) -->
+            <g id="setup-part-labels" class="part-labels">
+              <line x1="268" y1="44" x2="155" y2="44" class="callout-line" />
+              <text x="150" y="48" text-anchor="end" class="callout-text">支柱</text>
+
+              <line x1="201" y1="70" x2="135" y2="70" class="callout-line" />
+              <text x="130" y="74" text-anchor="end" class="callout-text">ピンチコック（上部）</text>
+
+              <line x1="197" y1="98" x2="135" y2="98" class="callout-line" />
+              <text x="130" y="102" text-anchor="end" class="callout-text">ゴム栓</text>
+
+              <line x1="200" y1="185" x2="135" y2="185" class="callout-line" />
+              <text x="130" y="189" text-anchor="end" class="callout-text">H字管</text>
+
+              <line x1="219" y1="305" x2="135" y2="305" class="callout-line" />
+              <text x="130" y="309" text-anchor="end" class="callout-text">電極（陰極）</text>
+
+              <line x1="335" y1="305" x2="405" y2="305" class="callout-line" />
+              <text x="410" y="309" text-anchor="start" class="callout-text">電極（陽極）</text>
+
+              <line x1="432" y1="395" x2="458" y2="424" class="callout-line" />
+              <text x="462" y="428" text-anchor="start" class="callout-text">プラスチックのバット</text>
+            </g>
+
+            <!-- Gas Test Visual Overlay -->
+            <g id="setup-test-effect"></g>
+          </svg>
+        </div>
+
+        <div class="setup-hint-bar">
+          <div class="res-height-control">
+            <label for="res-height-slider" class="progress-label">↕ 液だめの高さ</label>
+            <span class="height-tag">低い</span>
+            <input id="res-height-slider" type="range" min="-60" max="60" value="0" />
+            <span class="height-tag">高い</span>
+            <button id="res-height-reset" type="button" class="mini-btn">基準</button>
+          </div>
+          <span class="hint-text">💡 ピンチコックをクリックして開閉</span>
+        </div>
+      </section>
+
+      <!-- Right: Step-by-Step Interactive Guide -->
+      <aside class="info-panel" aria-label="使い方の手順">
+        <div id="setup-feedback-card" class="result-card">
+          <div class="result-badge" id="setup-step-badge">STEP 1 / 6</div>
+          <p id="setup-feedback-text">まずは、ゴム栓の上部と液だめのピンチコック（3か所）を全て「開」にします。</p>
+        </div>
+
+        <div class="step-list" id="setup-step-list">
+          <button type="button" class="step-card active" data-step="0">
+            <span class="step-num">1</span>
+            <span class="step-desc"><strong>ピンチコックを全て開く</strong><br /><small>空気の逃げ道をつくる</small></span>
+          </button>
+          <button type="button" class="step-card" data-step="1">
+            <span class="step-num">2</span>
+            <span class="step-desc"><strong>液だめから水溶液を入れる</strong><br /><small>H字管に空気が残らないよう満たす</small></span>
+          </button>
+          <button type="button" class="step-card" data-step="2">
+            <span class="step-num">3</span>
+            <span class="step-desc"><strong>上部のピンチコックを閉じる</strong><br /><small>液だめのコックは「開」のまま！</small></span>
+          </button>
+          <button type="button" class="step-card" data-step="3">
+            <span class="step-num">4</span>
+            <span class="step-desc"><strong>電源をつなぎ電流を流す</strong><br /><small>気体がたまり、液だめの液面が上がる</small></span>
+          </button>
+          <button type="button" class="step-card" data-step="4">
+            <span class="step-num">5</span>
+            <span class="step-desc"><strong>気体がたまったら電源を切る</strong><br /><small>安全のため先に電源をOFFにする</small></span>
+          </button>
+          <button type="button" class="step-card" data-step="5">
+            <span class="step-num">6</span>
+            <span class="step-desc"><strong>液だめのコックを閉じて気体を確認</strong><br /><small>液が吹き出すのを防いでから確認する</small></span>
+          </button>
+        </div>
+
+        <div class="step-nav-bar">
+          <button type="button" id="step-prev-btn" class="icon-btn" disabled>◀ 前の手順</button>
+          <button type="button" id="step-next-btn" class="primary-btn">次の手順 ▶</button>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- Fullscreen Illustration Modal (Easter egg on 3x consecutive clicks of left gas test) -->
+  <div id="illustration-modal" class="illustration-modal hidden" role="dialog" aria-modal="true" aria-label="気体の確認イラスト">
+    <button type="button" id="illustration-close-btn" class="illustration-close-btn" aria-label="閉じる">✕ 閉じる</button>
+    <img src="assets/gas-check-illustration.jpg" alt="水素と酸素の確認イラスト" class="illustration-modal-img" />
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

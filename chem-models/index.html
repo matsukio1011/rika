@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>化学反応式 モデル図ビューア｜中学理科</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Top Header -->
+    <header class="top-bar">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="24" height="24">
+            <circle cx="11" cy="16" r="7" fill="currentColor" opacity="0.25" stroke="currentColor" stroke-width="2"/>
+            <circle cx="21" cy="16" r="7" fill="currentColor" opacity="0.85"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>化学反応式 モデル図ビューア</h1>
+          <span class="brand-sub">中学2年 理科｜原子・分子と化学変化</span>
+        </div>
+      </div>
+
+      <nav class="app-mode-tabs" role="tablist" aria-label="アプリの切り替え">
+        <button type="button" class="app-mode-tab active" data-app-tab="equations" role="tab" aria-selected="true">
+          🧪 化学反応式モデル
+        </button>
+        <button type="button" class="app-mode-tab" data-app-tab="htube" role="tab" aria-selected="false">
+          ⚡ H字管 水の電気分解
+        </button>
+      </nav>
+
+      <div class="top-controls">
+        <div class="shortcut-hint" title="キーボードの ↑↓ で反応を切り替え、Spaceでアニメーション再生">
+          <kbd>↑</kbd><kbd>↓</kbd> 切替 / <kbd>Space</kbd> 再生
+        </div>
+
+        <button id="theme-toggle" class="icon-btn" type="button" aria-label="ダークモード切り替え" title="ライト / ダークモード切り替え">
+          <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <span class="btn-label" id="theme-label">ダーク</span>
+        </button>
+
+        <button id="fullscreen-toggle" class="icon-btn" type="button" aria-label="全画面表示切り替え" title="全画面表示 / 解除">
+          <svg class="icon-expand" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <polyline points="9 21 3 21 3 15"></polyline>
+            <line x1="21" y1="3" x2="14" y2="10"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+          <svg class="icon-compress" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 14 10 14 10 20"></polyline>
+            <polyline points="20 10 14 10 14 4"></polyline>
+            <line x1="14" y1="10" x2="21" y2="3"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+          <span class="btn-label" id="fullscreen-label">全画面</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace (No Scroll, Full Width) -->
+    <div id="panel-equations" class="workspace">
+      <!-- Center Presentation Stage -->
+      <main class="stage">
+        <!-- Stage Toolbar -->
+        <div class="stage-toolbar">
+          <div class="reaction-heading">
+            <span id="reaction-badge" class="category-badge">分解</span>
+            <select id="reaction-select" class="reaction-select" aria-label="化学反応を選択"></select>
+          </div>
+
+          <div class="toolbar-actions">
+            <div class="visibility-pills" role="group" aria-label="表示項目の切り替え">
+              <button type="button" class="pill-btn active" data-layer="names">物質名</button>
+              <button type="button" class="pill-btn active" data-layer="formulas">化学式</button>
+              <button type="button" class="pill-btn active" data-layer="models">モデル図</button>
+              <button type="button" class="pill-btn quiz-btn" id="quiz-toggle" title="反応後（右辺）を隠して考えさせる">
+                右辺を隠す
+              </button>
+            </div>
+
+            <button type="button" id="reset-one-btn" class="icon-btn" title="すべての係数を1に戻す" hidden>
+              <span>↺ 係数1に戻す</span>
+            </button>
+
+            <button type="button" id="solve-coeff-btn" class="icon-btn" title="正しい係数にそろえる">
+              <span>✓ 正しい係数</span>
+            </button>
+
+            <button type="button" id="animate-btn" class="primary-btn">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <span>組み替え再生</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Central Equation & Model Diagram Board -->
+        <section class="board" aria-live="polite">
+          <div id="equation-grid" class="equation-grid">
+            <!-- Dynamically rendered 3-tier columns: Reactants | Arrow | Products -->
+          </div>
+
+          <!-- Animation Overlay Layer -->
+          <svg id="anim-layer" class="anim-layer" aria-hidden="true"></svg>
+        </section>
+
+        <!-- Coefficient Control Bar (Outside the Equation) -->
+        <div id="coeff-bar" class="coeff-bar" aria-label="係数の調整"></div>
+
+        <!-- Stage Footer: Atom Count Verification & Teacher Note -->
+        <footer class="stage-footer">
+          <div class="atom-check-box">
+            <div class="atom-check-label">
+              <span class="check-title">原子の数の確認</span>
+              <span id="atom-check-status" class="check-status">✓ 反応前後で同じ</span>
+            </div>
+            <div id="atom-counts" class="atom-counts"></div>
+          </div>
+
+          <div class="teacher-note">
+            <span class="note-tag">ポイント</span>
+            <p id="reaction-note"></p>
+          </div>
+        </footer>
+      </main>
+    </div>
+
+    <!-- H-Tube Electrolysis Simulator Tab Panel -->
+    <div id="panel-htube" class="htube-panel hidden">
+      <iframe id="htube-iframe" class="htube-iframe" src="h-tube-electrolysis/index.html?embed=1" title="H字管 水の電気分解シミュレーター"></iframe>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
