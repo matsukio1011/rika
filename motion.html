@@ -4683,6 +4683,23 @@
           else ctx.lineTo(cx, cy);
         });
         ctx.stroke();
+
+        if (state.popupChartStrip && state.popupChartStrip.graphIdx === graphIdx) {
+          const pIdx = state.popupChartStrip.stripIndex;
+          if (pIdx >= 0 && pIdx < strips.length) {
+            const cx = px + (pIdx + 0.5) * stripW;
+            const cy = py + ph - (strips[pIdx].length / maxCm) * ph;
+            ctx.save();
+            ctx.fillStyle = '#facc15';
+            ctx.strokeStyle = '#090d16';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 5.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
       }
 
       ctx.strokeStyle = '#94a3b8';
