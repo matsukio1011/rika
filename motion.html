@@ -973,6 +973,100 @@
       display: block;
     }
 
+    /* ===== 台紙クリック時の詳細ポップアップ ===== */
+    .strip-popup-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(9, 13, 22, 0.72);
+      backdrop-filter: blur(5px);
+      z-index: 45;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      border-radius: 14px;
+    }
+
+    .strip-popup-backdrop.open {
+      display: flex;
+    }
+
+    .strip-popup-card {
+      width: min(520px, 94%);
+      background: #0f172a;
+      border: 2px solid #38bdf8;
+      border-radius: 16px;
+      box-shadow: 0 22px 54px rgba(0, 0, 0, 0.8);
+      padding: 18px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .strip-popup-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+    }
+
+    .strip-popup-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #f8fafc;
+    }
+
+    .strip-popup-sub {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #94a3b8;
+    }
+
+    .strip-popup-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .strip-metric-box {
+      background: #090d16;
+      border: 1.5px solid #334155;
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .strip-metric-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #94a3b8;
+    }
+
+    .strip-metric-val {
+      font-family: Consolas, monospace;
+      font-size: 1.9rem;
+      font-weight: 900;
+      line-height: 1.2;
+    }
+
+    .strip-metric-note {
+      font-size: 0.74rem;
+      color: #cbd5e1;
+      margin-top: 2px;
+    }
+
+    .strip-popup-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-top: 6px;
+    }
+
     .data-panel {
       display: flex;
       flex-direction: column;
@@ -1242,6 +1336,7 @@
           </button>
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:0.76rem; color:#93c5fd; font-weight:700;">💡 台紙をクリックで長さと速さを拡大表示</span>
           <button class="btn btn-record" onclick="saveExp1Record()">📌 現在の実験1を記録</button>
           <button class="btn btn-reset" onclick="clearAllRecords()" id="btnClearRecords" style="display:none;">🗑 記録を全消去</button>
           <button class="btn" onclick="toggleChartModal()">✕ 実験画面に戻る</button>
@@ -1257,6 +1352,36 @@
             <div class="table-scroll">
               <table class="data-table" id="modalTable"></table>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 台紙クリック時の詳細ポップアップ -->
+      <div class="strip-popup-backdrop" id="stripPopupBackdrop" onclick="onStripBackdropClick(event)">
+        <div class="strip-popup-card" id="stripPopupCard">
+          <div class="strip-popup-header">
+            <div>
+              <div class="strip-popup-title" id="stripPopupTitle">📏 台紙 ①</div>
+              <div class="strip-popup-sub" id="stripPopupSub">条件</div>
+            </div>
+            <button class="btn btn-reset" style="height:34px; font-size:0.8rem;" onclick="closeStripPopup()">✕ 閉じる</button>
+          </div>
+          <div class="strip-popup-metrics">
+            <div class="strip-metric-box" style="border-color:rgba(56,189,248,0.45);">
+              <div class="strip-metric-label">📏 台紙の長さ（0.1秒間）</div>
+              <div class="strip-metric-val" id="stripPopupLen" style="color:#38bdf8;">0.0 cm</div>
+              <div class="strip-metric-note" id="stripPopupDelta">-</div>
+            </div>
+            <div class="strip-metric-box" style="border-color:rgba(52,211,153,0.45);">
+              <div class="strip-metric-label">⚡ 平均の速さ</div>
+              <div class="strip-metric-val" id="stripPopupSpeed" style="color:#34d399;">0 cm/s</div>
+              <div class="strip-metric-note" id="stripPopupSpeedFormula">-</div>
+            </div>
+          </div>
+          <div class="strip-popup-footer">
+            <button class="btn" style="height:36px; font-size:0.8rem;" id="btnPrevStrip" onclick="stepStripPopup(-1)">◀ 前の台紙</button>
+            <span id="stripPopupTimeRange" style="font-size:0.8rem; color:#fbbf24; font-weight:700; font-family:Consolas, monospace;">0.0〜0.1 s</span>
+            <button class="btn" style="height:36px; font-size:0.8rem;" id="btnNextStrip" onclick="stepStripPopup(1)">次の台紙 ▶</button>
           </div>
         </div>
       </div>
@@ -1294,10 +1419,12 @@
       chartOpen: false,
       chartTab: 'saved',
       savedRecords: [],     // 最大3個まで保存される実験1の結果
-      hoveredGhost: null,   // マウスホバー中の残像
-      popupGhost: null,     // ポップアップ表示中の残像 { modeType, stripIndex, maxStripIndex }
-      showEnergyGraph: true,// 位置・運動エネルギーグラフの表示/非表示
-      energyAxis: 'dist'    // 'dist' (移動距離) | 'time' (経過時間)
+      hoveredGhost: null,      // マウスホバー中の残像
+      popupGhost: null,        // ポップアップ表示中の残像 { modeType, stripIndex, maxStripIndex }
+      hoveredChartStrip: null, // 台紙グラフでホバー中の台紙 { graphIdx, stripIndex }
+      popupChartStrip: null,   // 台紙グラフでポップアップ中の台紙 { graphIdx, stripIndex }
+      showEnergyGraph: true,   // 位置・運動エネルギーグラフの表示/非表示
+      energyAxis: 'dist'       // 'dist' (移動距離) | 'time' (経過時間)
     };
 
     function isFreeMeterMode() {
@@ -1313,8 +1440,9 @@
       return `${heightCm.toFixed(0)} cm`;
     }
 
-    // キャンバス上の残像クリック判定用リスト
+    // キャンバス上の残像・台紙クリック判定用リスト
     let ghostHitBoxes = [];
+    let chartStripHitBoxes = [];
 
     const simCanvas = document.getElementById('simCanvas');
     const simCtx = simCanvas.getContext('2d');
@@ -2078,6 +2206,7 @@
     }
 
     function setChartTab(tab) {
+      closeStripPopup();
       state.chartTab = tab;
       updateChartTabsUI();
       render();
@@ -2170,6 +2299,7 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closeSettingsMenu();
+        closeStripPopup();
       }
     });
 
@@ -2465,6 +2595,7 @@
     }
 
     function toggleChartModal() {
+      closeStripPopup();
       state.chartOpen = !state.chartOpen;
       if (state.chartOpen) {
         if (state.savedRecords.length > 0) {
@@ -4183,6 +4314,7 @@
     // 3. 台紙グラフ モーダル描画
     // =========================================================
     function drawChartModal() {
+      chartStripHitBoxes = [];
       const rect = document.getElementById('chartStage').getBoundingClientRect();
       const W = rect.width;
       const H = rect.height;
@@ -4241,7 +4373,7 @@
 
         list.forEach((item, idx) => {
           const ox = 10 + idx * (graphW + gap);
-          drawPasteGraph(ctx, ox, 10, graphW, H - 20, item.strips, item.label, item.color, commonMax);
+          drawPasteGraph(ctx, ox, 10, graphW, H - 20, item.strips, item.label, item.color, commonMax, idx);
         });
 
         titleEl.textContent = state.savedRecords.length > 0
@@ -4288,8 +4420,8 @@
           s2[s2.length - 1]?.length || 15
         );
         const commonMax = Math.ceil((maxLen + 5) / 5) * 5;
-        drawPasteGraph(ctx, 10, 10, W / 2 - 14, H - 20, s1, `実験1：斜面 (${state.timerHz}Hz: ${p1.dotsPerStrip}打点, h=${state.heightCm}cm, θ=${state.angleDeg}°)`, '#3b82f6', commonMax);
-        drawPasteGraph(ctx, W / 2 + 4, 10, W / 2 - 14, H - 20, s2, `実験2：自由落下 (${state.timerHz}Hz: ${p2.dotsPerStrip}打点, h=${state.heightCm}cm, 90°)`, '#f97316', commonMax);
+        drawPasteGraph(ctx, 10, 10, W / 2 - 14, H - 20, s1, `実験1：斜面 (${state.timerHz}Hz: ${p1.dotsPerStrip}打点, h=${state.heightCm}cm, θ=${state.angleDeg}°)`, '#3b82f6', commonMax, 0);
+        drawPasteGraph(ctx, W / 2 + 4, 10, W / 2 - 14, H - 20, s2, `実験2：自由落下 (${state.timerHz}Hz: ${p2.dotsPerStrip}打点, h=${state.heightCm}cm, 90°)`, '#f97316', commonMax, 1);
 
         titleEl.textContent = `📋 同じ高さ (h=${state.heightCm}cm, ${state.timerHz}Hz) での斜面と自由落下のデータ比較`;
         const maxCols = Math.max(s1.length, s2.length);
@@ -4334,7 +4466,7 @@
       }
     }
 
-    function drawPasteGraph(ctx, ox, oy, bw, bh, strips, title, accent, maxCm) {
+    function drawPasteGraph(ctx, ox, oy, bw, bh, strips, title, accent, maxCm, graphIdx = 0) {
       const padL = 46;
       const padR = 12;
       const padT = 32;
@@ -4376,19 +4508,38 @@
 
       strips.forEach((st, i) => {
         const x = px + i * stripW;
-        ctx.fillStyle = '#e2e8f0';
-        ctx.font = 'bold 10px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(circled[i] || i + 1, x + stripW / 2, py + ph + 16);
-
         const barH = (st.length / maxCm) * ph;
         const yTop = py + ph - barH;
+        const labelNum = circled[i] || (i + 1);
+        const isHovered = state.hoveredChartStrip && state.hoveredChartStrip.graphIdx === graphIdx && state.hoveredChartStrip.stripIndex === i;
+        const isPopup = state.popupChartStrip && state.popupChartStrip.graphIdx === graphIdx && state.popupChartStrip.stripIndex === i;
 
-        ctx.fillStyle = '#f8fafc';
+        ctx.fillStyle = (isHovered || isPopup) ? '#38bdf8' : '#e2e8f0';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(labelNum, x + stripW / 2, py + ph + 16);
+
+        ctx.fillStyle = (isHovered || isPopup) ? '#e0f2fe' : '#f8fafc';
         ctx.fillRect(x + 1.5, yTop, stripW - 3, barH);
-        ctx.strokeStyle = '#334155';
-        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = (isHovered || isPopup) ? '#38bdf8' : '#334155';
+        ctx.lineWidth = (isHovered || isPopup) ? 2.4 : 1.2;
         ctx.strokeRect(x + 1.5, yTop, stripW - 3, barH);
+
+        // 台紙のクリック判定領域を登録（下の番号ラベルから棒の上端まで押しやすく確保）
+        chartStripHitBoxes.push({
+          graphIdx,
+          stripIndex: i,
+          totalStrips: strips.length,
+          labelNum,
+          strip: st,
+          prevLength: i > 0 ? strips[i - 1].length : null,
+          graphTitle: title,
+          accent,
+          x: x + 0.5,
+          y: Math.min(yTop - 10, py + ph - 20),
+          w: Math.max(stripW - 1, 8),
+          h: (py + ph + 20) - Math.min(yTop - 10, py + ph - 20)
+        });
 
         st.innerDots.forEach((dotCm, dIdx) => {
           if (dIdx === 0) return;
@@ -4422,6 +4573,122 @@
       ctx.strokeStyle = '#94a3b8';
       ctx.lineWidth = 1.5;
       ctx.strokeRect(px, py, pw, ph);
+    }
+
+    // =========================================================
+    // 台紙グラフ：台紙クリックで長さ・速さをポップアップ表示
+    // =========================================================
+    function findChartStripAt(mx, my) {
+      for (let i = chartStripHitBoxes.length - 1; i >= 0; i--) {
+        const b = chartStripHitBoxes[i];
+        if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+          return b;
+        }
+      }
+      return null;
+    }
+
+    chartCanvas.addEventListener('mousemove', (e) => {
+      if (!state.chartOpen) return;
+      const rect = chartCanvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const hit = findChartStripAt(mx, my);
+
+      const prevKey = state.hoveredChartStrip ? `${state.hoveredChartStrip.graphIdx}-${state.hoveredChartStrip.stripIndex}` : null;
+      const nextKey = hit ? `${hit.graphIdx}-${hit.stripIndex}` : null;
+      chartCanvas.style.cursor = hit ? 'pointer' : 'default';
+
+      if (prevKey !== nextKey) {
+        state.hoveredChartStrip = hit ? { graphIdx: hit.graphIdx, stripIndex: hit.stripIndex } : null;
+        drawChartModal();
+      }
+    });
+
+    chartCanvas.addEventListener('mouseleave', () => {
+      if (state.hoveredChartStrip) {
+        state.hoveredChartStrip = null;
+        chartCanvas.style.cursor = 'default';
+        if (state.chartOpen) drawChartModal();
+      }
+    });
+
+    chartCanvas.addEventListener('click', (e) => {
+      if (!state.chartOpen) return;
+      const rect = chartCanvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const hit = findChartStripAt(mx, my);
+      if (hit) {
+        openStripPopup(hit.graphIdx, hit.stripIndex);
+      }
+    });
+
+    function openStripPopup(graphIdx, stripIndex) {
+      state.popupChartStrip = { graphIdx, stripIndex };
+      document.getElementById('stripPopupBackdrop').classList.add('open');
+      renderStripPopup();
+      drawChartModal();
+    }
+
+    function closeStripPopup() {
+      if (!state.popupChartStrip) return;
+      state.popupChartStrip = null;
+      document.getElementById('stripPopupBackdrop').classList.remove('open');
+      if (state.chartOpen) drawChartModal();
+    }
+
+    function onStripBackdropClick(e) {
+      if (e.target.id === 'stripPopupBackdrop') {
+        closeStripPopup();
+      }
+    }
+
+    function stepStripPopup(delta) {
+      if (!state.popupChartStrip) return;
+      const { graphIdx, stripIndex } = state.popupChartStrip;
+      const sameGraph = chartStripHitBoxes.filter(b => b.graphIdx === graphIdx);
+      if (sameGraph.length === 0) return;
+      const nextIdx = Math.max(0, Math.min(sameGraph.length - 1, stripIndex + delta));
+      state.popupChartStrip.stripIndex = nextIdx;
+      renderStripPopup();
+      drawChartModal();
+    }
+
+    function renderStripPopup() {
+      if (!state.popupChartStrip) return;
+      const { graphIdx, stripIndex } = state.popupChartStrip;
+      const hit = chartStripHitBoxes.find(b => b.graphIdx === graphIdx && b.stripIndex === stripIndex);
+      if (!hit) {
+        closeStripPopup();
+        return;
+      }
+
+      const st = hit.strip;
+      const card = document.getElementById('stripPopupCard');
+      card.style.borderColor = hit.accent || '#38bdf8';
+
+      document.getElementById('stripPopupTitle').innerHTML = `📏 台紙 <span style="color:${hit.accent};">${hit.labelNum}</span> の長さと速さ`;
+      document.getElementById('stripPopupSub').textContent = hit.graphTitle;
+
+      document.getElementById('stripPopupLen').textContent = `${st.length.toFixed(1)} cm`;
+      if (hit.prevLength !== null) {
+        const diff = st.length - hit.prevLength;
+        const sign = diff >= 0 ? '+' : '';
+        document.getElementById('stripPopupDelta').textContent = `1つ前の台紙との差：${sign}${diff.toFixed(2)} cm`;
+      } else {
+        document.getElementById('stripPopupDelta').textContent = `最初の0.1秒間の台紙です`;
+      }
+
+      document.getElementById('stripPopupSpeed').textContent = `${st.avgSpeed.toFixed(0)} cm/s`;
+      document.getElementById('stripPopupSpeedFormula').textContent =
+        `${st.length.toFixed(1)} cm ÷ 0.1 s（= ${(st.avgSpeed / 100).toFixed(2)} m/s）`;
+
+      document.getElementById('stripPopupTimeRange').textContent =
+        `時刻 ${st.t0.toFixed(1)}〜${st.t1.toFixed(1)} s（位置 ${st.startCm.toFixed(1)}〜${st.endCm.toFixed(1)} cm）`;
+
+      document.getElementById('btnPrevStrip').disabled = stripIndex <= 0;
+      document.getElementById('btnNextStrip').disabled = stripIndex >= hit.totalStrips - 1;
     }
 
     // =========================================================
